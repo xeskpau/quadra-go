@@ -12,8 +12,19 @@ const envKeys = Object.keys(env).reduce((prev, next) => {
   return prev;
 }, {});
 
-// Always include NODE_ENV
+// Always include NODE_ENV and CI
 envKeys['process.env.NODE_ENV'] = JSON.stringify(process.env.NODE_ENV || 'development');
+envKeys['process.env.CI'] = JSON.stringify(process.env.CI || 'false');
+
+// Log environment variables in CI for debugging (without sensitive values)
+if (process.env.CI) {
+  console.log('Webpack environment variables:', {
+    NODE_ENV: process.env.NODE_ENV,
+    CI: process.env.CI,
+    hasReactAppFirebaseApiKey: !!env.REACT_APP_FIREBASE_API_KEY,
+    hasReactAppFirebaseAuthDomain: !!env.REACT_APP_FIREBASE_AUTH_DOMAIN
+  });
+}
 
 module.exports = {
   entry: './src/index.tsx',
