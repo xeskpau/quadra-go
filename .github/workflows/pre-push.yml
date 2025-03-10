@@ -1,0 +1,102 @@
+name: Pre-Push Tests
+
+# This workflow can be manually triggered to test changes before pushing to the main branch
+# It helps detect issues early in the development process
+
+on:
+  # Manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test (leave empty for current branch)'
+        required: false
+        default: ''
+  
+  # Optional: Uncomment to enable push trigger on non-main branches
+  # push:
+  #   branches-ignore:
+  #     - main
+
+jobs:
+  pre-push-test:
+    name: Run Tests Before Push
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.branch || github.ref }}
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+    
+    - name: Install dependencies
+      run: |
+        npm ci
+        npm install -D wait-on
+    
+    - name: Create .env file for testing
+      run: |
+        echo "REACT_APP_FIREBASE_API_KEY=test-api-key" > .env
+        echo "REACT_APP_FIREBASE_AUTH_DOMAIN=test-project-id.firebaseapp.com" >> .env
+        echo "REACT_APP_FIREBASE_PROJECT_ID=test-project-id" >> .env
+        echo "REACT_APP_FIREBASE_STORAGE_BUCKET=test-project-id.appspot.com" >> .env
+        echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=123456789" >> .env
+        echo "REACT_APP_FIREBASE_APP_ID=1:123456789:web:abcdef" >> .env
+        echo "REACT_APP_FIREBASE_MEASUREMENT_ID=G-TESTID" >> .env
+      
+    - name: Run unit tests with coverage
+      run: npm run test:coverage
+      env:
+        CI: true
+      
+    - name: Check coverage thresholds
+      run: |
+        npm run test:ci -- --coverageThreshold='{"global":{"branches":80,"functions":80,"lines":80,"statements":80}}'
+      env:
+        CI: true
+      
+    - name: Build application
+      run: npm run build
+      env:
+        CI: true
+        REACT_APP_FIREBASE_API_KEY: test-api-key
+        REACT_APP_FIREBASE_AUTH_DOMAIN: test-project-id.firebaseapp.com
+        REACT_APP_FIREBASE_PROJECT_ID: test-project-id
+        REACT_APP_FIREBASE_STORAGE_BUCKET: test-project-id.appspot.com
+        REACT_APP_FIREBASE_MESSAGING_SENDER_ID: 123456789
+        REACT_APP_FIREBASE_APP_ID: 1:123456789:web:abcdef
+        REACT_APP_FIREBASE_MEASUREMENT_ID: G-TESTID
+      
+    - name: Install Cypress
+      run: npx cypress install
+        
+    - name: Start app and run Cypress tests
+      run: |
+        npm start & npx wait-on --timeout 60000 http://localhost:3000
+        npm run test:e2e
+      env:
+        CI: true
+        CYPRESS_RECORD: false
+        REACT_APP_FIREBASE_API_KEY: test-api-key
+        REACT_APP_FIREBASE_AUTH_DOMAIN: test-project-id.firebaseapp.com
+        REACT_APP_FIREBASE_PROJECT_ID: test-project-id
+        REACT_APP_FIREBASE_STORAGE_BUCKET: test-project-id.appspot.com
+        REACT_APP_FIREBASE_MESSAGING_SENDER_ID: 123456789
+        REACT_APP_FIREBASE_APP_ID: 1:123456789:web:abcdef
+        REACT_APP_FIREBASE_MEASUREMENT_ID: G-TESTID
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pre-push-test-results
+        path: |
+          coverage/
+          cypress/videos/
+          cypress/screenshots/
+        if-no-files-found: ignore 
