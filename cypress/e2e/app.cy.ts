@@ -1,5 +1,9 @@
 describe('App', () => {
   beforeEach(() => {
+    // Set CI environment variable to true
+    Cypress.env('CI', true);
+    
+    // Visit the app
     cy.visit('/');
   });
 
@@ -10,7 +14,7 @@ describe('App', () => {
 
   it('displays the hero section with CTA button', () => {
     cy.get('h2').should('contain', 'Find and Book Sports Facilities with Ease');
-    cy.get('button').should('contain', 'Get Started').should('be.visible');
+    cy.get('button').contains('Get Started').should('be.visible');
   });
 
   it('displays three feature cards', () => {
