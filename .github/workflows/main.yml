@@ -44,8 +44,18 @@ jobs:
     - name: Build application
       run: npm run build
       
-    - name: Run E2E tests
-      run: npm run test:e2e
+    - name: Install Cypress
+      uses: cypress-io/github-action@v6
+      with:
+        runTests: false
+        
+    - name: Start app and run Cypress tests
+      uses: cypress-io/github-action@v6
+      with:
+        start: npm start
+        wait-on: 'http://localhost:3000'
+        browser: chrome
+        record: false
     
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
