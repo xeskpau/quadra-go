@@ -37,6 +37,8 @@ jobs:
         mkdir -p coverage
         mkdir -p cypress/videos
         mkdir -p cypress/screenshots
+        mkdir -p public
+        mkdir -p build
         
     - name: Run unit tests
       run: npm run test:ci
@@ -52,8 +54,10 @@ jobs:
     - name: Start app and run Cypress tests
       uses: cypress-io/github-action@v6
       with:
+        install: false
         start: npm start
         wait-on: 'http://localhost:3000'
+        wait-on-timeout: 120
         browser: chrome
         record: false
     
