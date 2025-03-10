@@ -16,6 +16,7 @@ jobs:
     strategy:
       matrix:
         node-version: [18.x, 20.x]
+      fail-fast: false
 
     steps:
     - uses: actions/checkout@v4
@@ -28,21 +29,32 @@ jobs:
     
     - name: Install dependencies
       run: npm ci
-    
+      
+    - name: Setup test environment
+      run: |
+        echo "Setting up test environment..."
+        npm install -g webpack-cli
+        
     - name: Run unit tests
       run: npm run test:ci
-    
-    - name: Run E2E tests
+      
+    - name: Build application
+      run: npm run build
+      
+    - name: Start application for E2E tests
       run: |
-        npm run build
-        npm run test:e2e
+        npm start & # Start in background
+        npx wait-on http://localhost:3000 # Wait for app to be ready
+      
+    - name: Run E2E tests
+      run: npm run test:e2e
     
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage/lcov.info
-        fail_ci_if_error: true
+        fail_ci_if_error: false # Don't fail the build if coverage upload fails
 
     - name: Upload test results
       if: always()
