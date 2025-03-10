@@ -24,7 +24,7 @@ describe('Login Component', () => {
     expect(screen.getByTestId('email-input')).toBeInTheDocument();
     expect(screen.getByTestId('password-input')).toBeInTheDocument();
     expect(screen.getByTestId('submit-button')).toHaveTextContent('Log In');
-    expect(screen.getByTestId('google-button')).toBeInTheDocument();
+    expect(screen.getByTestId('google-signin-button')).toBeInTheDocument();
   });
   
   test('switches between login and signup forms', () => {
@@ -34,14 +34,14 @@ describe('Login Component', () => {
     expect(screen.getByRole('heading', { name: /Log In/i })).toBeInTheDocument();
     
     // Click to switch to signup
-    fireEvent.click(screen.getByTestId('toggle-form-button'));
+    fireEvent.click(screen.getByTestId('toggle-mode-button'));
     
     // Should now be in signup mode
     expect(screen.getByRole('heading', { name: /Create Account/i })).toBeInTheDocument();
-    expect(screen.getByTestId('submit-button')).toHaveTextContent('Sign Up');
+    expect(screen.getByTestId('submit-button')).toHaveTextContent('Create Account');
     
     // Click to switch back to login
-    fireEvent.click(screen.getByTestId('toggle-form-button'));
+    fireEvent.click(screen.getByTestId('toggle-mode-button'));
     
     // Should be back in login mode
     expect(screen.getByRole('heading', { name: /Log In/i })).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe('Login Component', () => {
     expect(screen.getByTestId('forgot-password-button')).toBeInTheDocument();
     
     // Switch to signup mode
-    fireEvent.click(screen.getByTestId('toggle-form-button'));
+    fireEvent.click(screen.getByTestId('toggle-mode-button'));
     
     // Forgot password should not be visible in signup mode
     expect(screen.queryByTestId('forgot-password-button')).not.toBeInTheDocument();
@@ -89,7 +89,7 @@ describe('Login Component', () => {
     render(<Login />);
     
     // Click the Google button
-    fireEvent.click(screen.getByTestId('google-button'));
+    fireEvent.click(screen.getByTestId('google-signin-button'));
     
     // Success message may appear asynchronously
     await waitFor(() => {

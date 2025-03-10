@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import styled, { createGlobalStyle } from 'styled-components';
 import { AuthProvider } from './contexts/AuthContext';
+import { SportsCenterProvider } from './contexts/SportsCenterContext';
 import LoginModal from './components/auth/LoginModal';
 import UserProfile from './components/auth/UserProfile';
+import SportsCenterPortal from './components/sportsCenter/SportsCenterPortal';
 import { useAuth } from './contexts/AuthContext';
 
 // Global styles
@@ -173,6 +176,23 @@ const Footer = styled.footer.attrs({
   margin-top: 3rem;
 `;
 
+const NavMenu = styled.nav`
+  display: flex;
+  gap: 1.5rem;
+`;
+
+const NavLink = styled(Link)`
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.5rem;
+  transition: all 0.2s;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 // Main AppContent component that uses the authentication context
 const AppContent: React.FC = () => {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
@@ -183,7 +203,10 @@ const AppContent: React.FC = () => {
       <GlobalStyle />
       <Header>
         <HeaderContent>
-          <div></div> {/* Empty div for spacing */}
+          <NavMenu>
+            <NavLink to="/" data-testid="home-link">Home</NavLink>
+            <NavLink to="/sports-center" data-testid="sports-center-link">Sports Center Portal</NavLink>
+          </NavMenu>
           <HeaderCenter>
             <Logo>QuadraGo</Logo>
             <Tagline>Connect with sports centers near you</Tagline>
@@ -200,43 +223,49 @@ const AppContent: React.FC = () => {
         </HeaderContent>
       </Header>
       
-      <MainContainer>
-        <HeroSection>
-          <HeroTitle>Find and Book Sports Facilities with Ease</HeroTitle>
-          <HeroDescription>
-            QuadraGo connects players with sports centers in their area.
-            Browse available facilities, check real-time availability, book online,
-            and find other players to join your game - all in one place.
-          </HeroDescription>
-          <CTAButton>Get Started</CTAButton>
-        </HeroSection>
+      <Routes>
+        <Route path="/" element={
+          <MainContainer>
+            <HeroSection>
+              <HeroTitle>Find and Book Sports Facilities with Ease</HeroTitle>
+              <HeroDescription>
+                QuadraGo connects players with sports centers in their area.
+                Browse available facilities, check real-time availability, book online,
+                and find other players to join your game - all in one place.
+              </HeroDescription>
+              <CTAButton>Get Started</CTAButton>
+            </HeroSection>
+            
+            <FeaturesSection>
+              <FeatureCard>
+                <FeatureIcon>🔍</FeatureIcon>
+                <FeatureTitle>Find Nearby Facilities</FeatureTitle>
+                <FeatureDescription>
+                  Discover sports centers and facilities near your location with our intuitive map interface.
+                </FeatureDescription>
+              </FeatureCard>
+              
+              <FeatureCard>
+                <FeatureIcon>📅</FeatureIcon>
+                <FeatureTitle>Easy Booking</FeatureTitle>
+                <FeatureDescription>
+                  Book courts, fields, and other sports facilities with just a few clicks. Manage all your reservations in one place.
+                </FeatureDescription>
+              </FeatureCard>
+              
+              <FeatureCard>
+                <FeatureIcon>👥</FeatureIcon>
+                <FeatureTitle>Find Players</FeatureTitle>
+                <FeatureDescription>
+                  Connect with other sports enthusiasts in your area and never miss out on a game due to lack of players.
+                </FeatureDescription>
+              </FeatureCard>
+            </FeaturesSection>
+          </MainContainer>
+        } />
         
-        <FeaturesSection>
-          <FeatureCard>
-            <FeatureIcon>🔍</FeatureIcon>
-            <FeatureTitle>Find Nearby Facilities</FeatureTitle>
-            <FeatureDescription>
-              Discover sports centers and facilities near your location with our intuitive map interface.
-            </FeatureDescription>
-          </FeatureCard>
-          
-          <FeatureCard>
-            <FeatureIcon>📅</FeatureIcon>
-            <FeatureTitle>Easy Booking</FeatureTitle>
-            <FeatureDescription>
-              Book courts, fields, and other sports facilities with just a few clicks. Manage all your reservations in one place.
-            </FeatureDescription>
-          </FeatureCard>
-          
-          <FeatureCard>
-            <FeatureIcon>👥</FeatureIcon>
-            <FeatureTitle>Find Players</FeatureTitle>
-            <FeatureDescription>
-              Connect with other sports enthusiasts in your area and never miss out on a game due to lack of players.
-            </FeatureDescription>
-          </FeatureCard>
-        </FeaturesSection>
-      </MainContainer>
+        <Route path="/sports-center" element={<SportsCenterPortal />} />
+      </Routes>
       
       <Footer>
         © {new Date().getFullYear()} QuadraGo. All rights reserved.
@@ -250,9 +279,13 @@ const AppContent: React.FC = () => {
 // Main App component that provides the authentication context
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <SportsCenterProvider>
+          <AppContent />
+        </SportsCenterProvider>
+      </AuthProvider>
+    </Router>
   );
 };
 

@@ -3,23 +3,23 @@ module.exports = {
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   moduleNameMapper: {
-    '\\.(css|less|sass|scss)$': 'identity-obj-proxy',
-    '\\.(gif|ttf|eot|svg|png)$': '<rootDir>/src/__mocks__/fileMock.js',
+    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/src/__mocks__/fileMock.js',
   },
-  testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
-  moduleDirectories: ['node_modules', 'src'],
   transform: {
-    '^.+\\.(ts|tsx)$': 'ts-jest',
-    '^.+\\.js$': 'babel-jest',
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      tsconfig: 'tsconfig.json',
+    }],
   },
-  transformIgnorePatterns: [
-    '/node_modules/(?!(react-leaflet|@react-leaflet|leaflet)/)',
-  ],
+  testMatch: ['**/__tests__/**/*.test.(ts|tsx)'],
   collectCoverageFrom: [
-    'src/**/*.{js,jsx,ts,tsx}',
+    'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/index.tsx',
-    '!src/firebase.ts',
+    '!src/reportWebVitals.ts',
+    '!src/serviceWorker.ts',
+    '!src/__mocks__/**',
+    '!src/firebase.ts', // Exclude firebase.ts from coverage calculations
   ],
   coverageThreshold: {
     global: {
@@ -27,6 +27,11 @@ module.exports = {
       functions: 80,
       lines: 80,
       statements: 80,
+    },
+  },
+  globals: {
+    'ts-jest': {
+      isolatedModules: true,
     },
   },
 }; 
