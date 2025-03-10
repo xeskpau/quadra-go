@@ -4,82 +4,111 @@ This document outlines the testing strategy and test cases for the QuadraGo appl
 
 ## Testing Strategy
 
-The application uses a combination of:
-- Unit tests for individual components
+The application uses a comprehensive testing approach with:
+- Unit tests for individual components using Jest and React Testing Library
 - Integration tests for component interactions
-- End-to-end tests for user flows
+- End-to-end tests using Cypress for user flows
+
+## Test Structure
+
+```
+quadra-go/
+├── src/
+│   └── __tests__/
+│       ├── App.test.tsx
+│       ├── auth/
+│       │   └── Login.test.tsx
+│       └── components/
+│           ├── SportsCenterList.test.tsx
+│           ├── BookingForm.test.tsx
+│           └── Map.test.tsx
+└── cypress/
+    ├── e2e/
+    │   └── booking.cy.ts
+    └── support/
+        └── commands.ts
+```
 
 ## Test Cases
 
-### Authentication Tests
+### Unit Tests
 
-1. **User Login Test**
-   - Test that users can log in with valid credentials
-   - Test that appropriate error messages are shown for invalid credentials
-   - Test that users are redirected to the feed page after successful login
+#### Authentication Tests
+- [x] User Login Test
+  - Validates form rendering
+  - Tests validation errors
+  - Verifies successful login
+  - Handles invalid credentials
 
-2. **User Signup Test**
-   - Test that users can create a new account with valid information
-   - Test that appropriate validation errors are shown for invalid inputs
-   - Test that users are redirected to the feed page after successful signup
+#### Sports Center Tests
+- [x] Sports Center Listing Test
+  - Renders sports centers correctly
+  - Displays center details
+  - Implements filtering functionality
 
-3. **Google Authentication Test**
-   - Test that users can log in using Google authentication
-   - Test that user information is correctly retrieved from Google
+#### Booking Tests
+- [x] Booking Form Test
+  - Validates form elements
+  - Handles date selection
+  - Manages time slot selection
+  - Processes booking submission
+  - Shows validation errors
 
-### Sports Center Tests
+#### Map Tests
+- [x] Map Component Test
+  - Renders map container
+  - Displays markers correctly
+  - Handles marker interactions
+  - Centers on selected location
 
-1. **Sports Center Listing Test**
-   - Test that sports centers are correctly displayed in the list view
-   - Test that sports center details are accurate
+### End-to-End Tests
 
-2. **Sports Center Filtering Test**
-   - Test that filtering by sport works correctly
-   - Test that filtering by date works correctly
-   - Test that filtering by time works correctly
-   - Test that combined filters work correctly
-
-3. **Sports Center Map Test**
-   - Test that sports centers are correctly displayed on the map
-   - Test that map markers show the correct information
-   - Test that clicking on a marker opens the sports center details
-
-### Booking Tests
-
-1. **Slot Availability Test**
-   - Test that available slots are correctly displayed
-   - Test that unavailable slots are correctly marked
-
-2. **Booking Process Test**
-   - Test that users can book an available slot
-   - Test that booking confirmation is displayed
-   - Test that booked slots are marked as unavailable after booking
+#### Booking Flow
+- [x] Complete booking process
+- [x] Error handling for unavailable slots
+- [x] Sports center filtering
+- [x] Map interaction
 
 ## Running Tests
 
-To run the tests, use the following command:
-
+### Unit Tests
 ```bash
+# Run all unit tests
 npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage
+npm run test:coverage
 ```
 
-For end-to-end tests:
-
+### End-to-End Tests
 ```bash
+# Open Cypress Test Runner
+npm run cypress:open
+
+# Run Cypress tests headlessly
 npm run test:e2e
 ```
 
-## Test Implementation Status
+## Test Coverage Requirements
 
-- [ ] Authentication Tests
-- [ ] Sports Center Listing Tests
-- [ ] Sports Center Filtering Tests
-- [ ] Sports Center Map Tests
-- [ ] Booking Tests
+- Unit Test Coverage: 80% minimum
+- Critical Path E2E Coverage: 100%
+
+## Continuous Integration
+
+Tests are automatically run on:
+- Pull request creation
+- Push to main branch
+- Daily scheduled runs
 
 ## Next Steps
 
-1. Implement unit tests for all components
-2. Set up integration tests for component interactions
-3. Implement end-to-end tests for critical user flows
-4. Set up continuous integration for automated testing
+1. [x] Implement unit tests for all components
+2. [x] Set up integration tests for component interactions
+3. [x] Implement end-to-end tests for critical user flows
+4. [ ] Add performance testing
+5. [ ] Implement visual regression testing
+6. [ ] Add API contract testing
