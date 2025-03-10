@@ -11,6 +11,7 @@ const mockAvailableSlots = [
 
 describe('BookingForm Component', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     render(
       <BookingForm
         sportsCenterId="123"
@@ -35,14 +36,17 @@ describe('BookingForm Component', () => {
   });
 
   it('submits booking with selected slot', async () => {
+    // Set the date
     const dateInput = screen.getByLabelText(/select date/i);
-    await userEvent.type(dateInput, '2024-03-15');
+    fireEvent.change(dateInput, { target: { value: '2024-03-15' } });
 
+    // Select the time slot
     const timeSlotSelect = screen.getByLabelText(/select time slot/i);
     fireEvent.change(timeSlotSelect, { target: { value: '1' } });
 
-    const bookButton = screen.getByRole('button', { name: /book now/i });
-    fireEvent.click(bookButton);
+    // Submit the form
+    const form = screen.getByRole('form');
+    fireEvent.submit(form);
 
     await waitFor(() => {
       expect(mockOnSubmit).toHaveBeenCalledWith({
@@ -64,9 +68,7 @@ describe('BookingForm Component', () => {
 
   it('disables past dates in date picker', () => {
     const dateInput = screen.getByLabelText(/select date/i);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    expect(dateInput).toHaveAttribute('min', new Date().toISOString().split('T')[0]);
+    const today = new Date().toISOString().split('T')[0];
+    expect(dateInput).toHaveAttribute('min', today);
   });
 }); 

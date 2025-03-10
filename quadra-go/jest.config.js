@@ -10,7 +10,11 @@ module.exports = {
   moduleDirectories: ['node_modules', 'src'],
   transform: {
     '^.+\\.(ts|tsx)$': 'ts-jest',
+    '^.+\\.js$': 'babel-jest',
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(react-leaflet|@react-leaflet|leaflet)/)',
+  ],
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',

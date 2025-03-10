@@ -1,4 +1,15 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+
+interface AuthContextType {
+  isAuthenticated: boolean;
+  user: User | null;
+  login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => void;
+  isLoading: boolean;
+  error: string | null;
+}
 
 interface User {
   id: string;
@@ -7,22 +18,11 @@ interface User {
   profilePicture?: string;
 }
 
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  signup: (email: string, password: string, name: string) => Promise<void>;
-  logout: () => void;
-  error: string | null;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
@@ -34,28 +34,21 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock login function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful login
-      if (email === 'user@example.com' && password === 'password') {
+      if (email === 'test@example.com' && password === 'password123') {
         setUser({
           id: '1',
-          email: 'user@example.com',
-          name: 'John Doe',
-          profilePicture: 'https://via.placeholder.com/150'
+          email,
+          name: 'Test User',
         });
       } else {
-        throw new Error('Invalid email or password');
+        throw new Error('Invalid credentials');
       }
     } catch (err) {
       setError((err as Error).message);
@@ -65,21 +58,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Mock Google login function
   const loginWithGoogle = async () => {
     setIsLoading(true);
     setError(null);
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful Google login
+      // Mock Google login
       setUser({
         id: '2',
         email: 'google@example.com',
         name: 'Google User',
-        profilePicture: 'https://via.placeholder.com/150'
       });
     } catch (err) {
       setError((err as Error).message);
@@ -89,21 +76,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Mock signup function
   const signup = async (email: string, password: string, name: string) => {
     setIsLoading(true);
     setError(null);
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful signup
+      // Mock signup
       setUser({
         id: '3',
         email,
         name,
-        profilePicture: 'https://via.placeholder.com/150'
       });
     } catch (err) {
       setError((err as Error).message);
@@ -113,21 +94,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Mock logout function
   const logout = () => {
     setUser(null);
+    setError(null);
   };
 
   const value = {
-    user,
     isAuthenticated: !!user,
-    isLoading,
+    user,
     login,
     loginWithGoogle,
     signup,
     logout,
-    error
+    isLoading,
+    error,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}; 
+};
+
+export default AuthContext; 
