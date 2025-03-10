@@ -1,5 +1,8 @@
 name: CI
 
+# Status badge for README
+# [![CI](https://github.com/${{ github.repository }}/actions/workflows/main.yml/badge.svg)](https://github.com/${{ github.repository }}/actions/workflows/main.yml)
+
 on:
   push:
     branches: [ main ]
