@@ -28,23 +28,21 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
-      
-    - name: Setup test environment
       run: |
-        echo "Setting up test environment..."
-        npm install -g webpack-cli
+        npm install -g npm@latest
+        npm ci
+      
+    - name: Create required directories
+      run: |
+        mkdir -p coverage
+        mkdir -p cypress/videos
+        mkdir -p cypress/screenshots
         
     - name: Run unit tests
       run: npm run test:ci
       
     - name: Build application
       run: npm run build
-      
-    - name: Start application for E2E tests
-      run: |
-        npm start & # Start in background
-        npx wait-on http://localhost:3000 # Wait for app to be ready
       
     - name: Run E2E tests
       run: npm run test:e2e
@@ -54,7 +52,7 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage/lcov.info
-        fail_ci_if_error: false # Don't fail the build if coverage upload fails
+        fail_ci_if_error: false
 
     - name: Upload test results
       if: always()
