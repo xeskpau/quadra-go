@@ -5,15 +5,15 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, User } from 'firebase/aut
 const isTest = process.env.NODE_ENV === 'test';
 
 // For test environment, use mock config
-// For production, use proper Firebase config
+// For production, use environment variables
 const firebaseConfig = {
-  apiKey: isTest ? "test-api-key" : "AIzaSyD5s1v3xijHWzqBTjOMowzUT7jxWzcMo1I",
-  authDomain: isTest ? "test-project-id.firebaseapp.com" : "central-embassy-346301.firebaseapp.com",
-  projectId: isTest ? "test-project-id" : "central-embassy-346301",
-  storageBucket: isTest ? "test-project-id.appspot.com" : "central-embassy-346301.firebasestorage.app",
-  messagingSenderId: isTest ? "123456789" : "118900547313",
-  appId: isTest ? "1:123456789:web:abcdef" : "1:118900547313:web:f50fa6e093f5ad5dda9350",
-  measurementId: isTest ? "" : "G-MSNFVBL38M"
+  apiKey: isTest ? "test-api-key" : process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: isTest ? "test-project-id.firebaseapp.com" : process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: isTest ? "test-project-id" : process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: isTest ? "test-project-id.appspot.com" : process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: isTest ? "123456789" : process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: isTest ? "1:123456789:web:abcdef" : process.env.REACT_APP_FIREBASE_APP_ID,
+  measurementId: isTest ? "" : process.env.REACT_APP_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
@@ -22,14 +22,15 @@ const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 // Configure Google Auth Provider - Add these settings to ensure the prompt appears
-googleProvider.setCustomParameters({
-  prompt: 'select_account',
-  // Add login_hint if you want to suggest a specific account
-  // login_hint: 'user@gmail.com'
-  
-  // Enable one-tap sign-in if running in development/production
-  ...(isTest ? {} : { ux_mode: 'popup' })
-});
+// Only call setCustomParameters if not in test environment
+if (!isTest) {
+  googleProvider.setCustomParameters({
+    prompt: 'select_account',
+    // Add login_hint if you want to suggest a specific account
+    // login_hint: 'user@gmail.com'
+    ux_mode: 'popup'
+  });
+}
 
 // Helper function for Google sign-in
 const signInWithGoogle = async (): Promise<User | null> => {

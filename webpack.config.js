@@ -1,5 +1,19 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
+const dotenv = require('dotenv');
+
+// Load environment variables from .env file
+const env = dotenv.config().parsed || {};
+
+// Prepare environment variables for DefinePlugin
+const envKeys = Object.keys(env).reduce((prev, next) => {
+  prev[`process.env.${next}`] = JSON.stringify(env[next]);
+  return prev;
+}, {});
+
+// Always include NODE_ENV
+envKeys['process.env.NODE_ENV'] = JSON.stringify(process.env.NODE_ENV || 'development');
 
 module.exports = {
   entry: './src/index.tsx',
@@ -43,6 +57,7 @@ module.exports = {
       template: './public/index.html',
       inject: true
     }),
+    new webpack.DefinePlugin(envKeys)
   ],
   devServer: {
     historyApiFallback: true,
