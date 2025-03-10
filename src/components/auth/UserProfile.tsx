@@ -22,7 +22,7 @@ const ProfileButton = styled.button`
   }
 `;
 
-const Avatar = styled.div<{ photoURL?: string | null }>`
+const Avatar = styled.div<{ $imageUrl?: string | null }>`
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
@@ -32,7 +32,7 @@ const Avatar = styled.div<{ photoURL?: string | null }>`
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  background-image: ${props => props.photoURL ? `url(${props.photoURL})` : 'none'};
+  background-image: ${props => props.$imageUrl ? `url(${props.$imageUrl})` : 'none'};
   background-size: cover;
   background-position: center;
 `;
@@ -157,7 +157,7 @@ const UserProfile: React.FC = () => {
       >
         {currentUser?.photoURL ? (
           <Avatar 
-            photoURL={currentUser.photoURL} 
+            $imageUrl={currentUser.photoURL} 
             data-testid="user-avatar-photo"
             aria-label="User avatar with photo" 
           />

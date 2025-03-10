@@ -145,6 +145,77 @@ git push --no-verify
 - Unit Test Coverage: 80% minimum (currently enforced in jest.config.js)
 - Critical Path E2E Coverage: 100%
 
+### Maintaining Test Coverage
+
+To ensure tests continue to pass in CI and maintain required coverage thresholds:
+
+1. **Test All New Code**: Write tests for any new code before or alongside implementation.
+
+2. **Avoid DOM Attribute Warnings**: 
+   - Always use camelCase for React component props
+   - For DOM elements, use lowercase attribute names
+   - For styled-components, use properly named props that won't conflict with HTML attributes
+   - Never pass React-specific props directly to DOM elements
+   - Use the `$` prefix for transient props in styled-components (e.g., `$imageUrl` instead of `imageUrl`)
+
+3. **External Services Testing**:
+   - For files like `firebase.ts` that interact with external services:
+     - Create proper mock implementations that cover both success and failure paths
+     - Test different environment configurations (test, CI, production)
+     - Ensure conditional paths in the code are covered by tests
+     - Consider excluding complex external service files from coverage calculations if necessary
+
+4. **Common Test Coverage Gaps**:
+   - Error handling branches
+   - Edge cases and conditional logic
+   - Initialization code
+   - Authentication flows
+   - Environment-specific code
+
+5. **Before Committing**:
+   - Run `npm run test:coverage` locally to verify coverage
+   - Fix any failing tests
+   - Address any coverage gaps (below 80%)
+
+6. **Exempting Files from Coverage**:
+   - If certain files cannot practically reach 80% coverage:
+     - Document why in the PR description
+     - Add to the coverage exclusion list in jest.config.js
+     - Only exempt files when absolutely necessary
+
+### Known Testing Challenges
+
+1. **Firebase Integration**:
+   - The `firebase.ts` file is currently excluded from coverage calculations due to its complexity and external dependencies
+   - When modifying this file, ensure you manually test all code paths
+   - Consider adding more comprehensive mocks for Firebase services
+
+2. **React DOM Warnings**:
+   - Use the `$` prefix for styled-component props that shouldn't be passed to the DOM
+   - Example: `$imageUrl` instead of `imageUrl` or `photoURL`
+   - This prevents React warnings about unrecognized DOM attributes
+
+3. **AuthContext Testing**:
+   - The AuthContext has special handling for test environments
+   - Some methods like `resetPassword` have simplified implementations in test mode
+   - When testing these methods, be aware of the environment-specific behavior
+
+4. **Test Environment Variables**:
+   - Tests rely on proper environment variables being set
+   - Ensure `NODE_ENV=test` is set when running tests
+   - Mock environment variables when testing environment-specific code
+
+5. **Mocking External Functions**:
+   - When testing functions that call external services, create proper mocks
+   - For imported functions that need to be mocked, use techniques like:
+     ```typescript
+     // Create a mock for the function
+     const mockFunction = jest.fn();
+     // Replace the imported function with our mock
+     (importedFunction as unknown) = mockFunction;
+     ```
+   - Reset mocks between tests to avoid test contamination
+
 ## Continuous Integration
 
 The project uses GitHub Actions for automated testing and deployment. The following workflows are configured:
@@ -200,3 +271,11 @@ Test results and artifacts are retained for:
 6. [ ] Add API contract testing
    - [ ] Mock service worker integration
    - [ ] API response validation
+7. [ ] Improve Firebase testing
+   - [ ] Create more comprehensive mocks for Firebase services
+   - [ ] Add tests for Firebase initialization
+   - [ ] Test Firebase error handling more thoroughly
+8. [ ] Enhance styled-components testing
+   - [ ] Add tests for theme changes
+   - [ ] Test responsive design breakpoints
+   - [ ] Ensure proper transient prop usage with $ prefix

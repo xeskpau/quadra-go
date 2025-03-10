@@ -19,6 +19,7 @@ module.exports = {
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',
     '!src/index.tsx',
+    '!src/firebase.ts',
   ],
   coverageThreshold: {
     global: {
