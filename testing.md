@@ -14,14 +14,15 @@ The application uses a comprehensive testing approach with:
 ```
 quadra-go/
 ├── src/
-│   └── __tests__/
-│       ├── App.test.tsx
-│       ├── auth/
-│       │   └── Login.test.tsx
-│       └── components/
-│           ├── SportsCenterList.test.tsx
-│           ├── BookingForm.test.tsx
-│           └── Map.test.tsx
+│   ├── __tests__/
+│   │   ├── App.test.tsx
+│   │   ├── auth/
+│   │   │   └── Login.test.tsx
+│   │   └── components/
+│   │       ├── SportsCenterList.test.tsx
+│   │       ├── BookingForm.test.tsx
+│   │       └── Map.test.tsx
+│   └── setupTests.ts
 └── cypress/
     ├── e2e/
     │   └── booking.cy.ts
@@ -45,6 +46,7 @@ quadra-go/
   - Renders sports centers correctly
   - Displays center details
   - Implements filtering functionality
+  - Shows available slots
 
 #### Booking Tests
 - [x] Booking Form Test
@@ -67,7 +69,7 @@ quadra-go/
 - [x] Complete booking process
 - [x] Error handling for unavailable slots
 - [x] Sports center filtering
-- [x] Map interaction
+- [x] Map interaction and navigation
 
 ## Running Tests
 
@@ -92,9 +94,55 @@ npm run cypress:open
 npm run test:e2e
 ```
 
+### Git Hooks
+
+The project uses Husky to run tests automatically at different Git stages:
+
+#### Pre-commit Hook
+Runs unit tests for files that are being committed:
+```bash
+npm run test:precommit
+```
+This ensures that:
+- Only the tests related to changed files are run
+- Tests must pass before the commit is created
+- Fast feedback loop for developers
+
+#### Pre-push Hook
+Runs full test suite before pushing to remote:
+```bash
+npm run test:prepush
+```
+This ensures that:
+- All unit tests pass
+- Code coverage meets minimum requirements (80%)
+- All end-to-end tests pass
+- No breaking changes are pushed to the remote repository
+
+#### Skipping Hooks
+
+While it's technically possible to skip hooks using `--no-verify`, this should **NEVER** be done when:
+- Making changes to application code
+- Modifying component logic
+- Changing test files
+- Updating dependencies
+- Refactoring code
+
+The `--no-verify` flag should **ONLY** be used in exceptional cases such as:
+```bash
+# For documentation-only changes
+git commit -m "docs: update README" --no-verify
+git push --no-verify
+
+# For emergency hotfixes (requires team lead approval)
+# Note: Tests must still be run and pass in CI before deployment
+```
+
+> **Important**: Running tests is a critical part of our development process. Skipping tests when making code changes puts the application at risk and bypasses our quality controls. If tests are failing, fix the issues rather than bypassing the tests.
+
 ## Test Coverage Requirements
 
-- Unit Test Coverage: 80% minimum
+- Unit Test Coverage: 80% minimum (currently enforced in jest.config.js)
 - Critical Path E2E Coverage: 100%
 
 ## Continuous Integration
@@ -110,5 +158,11 @@ Tests are automatically run on:
 2. [x] Set up integration tests for component interactions
 3. [x] Implement end-to-end tests for critical user flows
 4. [ ] Add performance testing
+   - [ ] Load time measurements
+   - [ ] Component rendering performance
 5. [ ] Implement visual regression testing
+   - [ ] Snapshot testing for UI components
+   - [ ] Cross-browser compatibility tests
 6. [ ] Add API contract testing
+   - [ ] Mock service worker integration
+   - [ ] API response validation
