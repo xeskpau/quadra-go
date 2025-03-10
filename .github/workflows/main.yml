@@ -26,42 +26,31 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
     
     - name: Install dependencies
       run: |
         npm install -g npm@latest
         npm ci
       
-    - name: Create required directories
-      run: |
-        mkdir -p coverage
-        mkdir -p cypress/videos
-        mkdir -p cypress/screenshots
-        mkdir -p public
-        mkdir -p build
-        
-    - name: Run unit tests
+    - name: Run unit tests with coverage
       run: npm run test:ci
       
     - name: Build application
       run: npm run build
       
     - name: Install Cypress
-      uses: cypress-io/github-action@v6
-      with:
-        runTests: false
+      run: npx cypress install
         
     - name: Start app and run Cypress tests
-      uses: cypress-io/github-action@v6
-      with:
-        install: false
-        start: npm start
-        wait-on: 'http://localhost:3000'
-        wait-on-timeout: 120
-        browser: chrome
-        record: false
+      run: |
+        npm start & npx wait-on http://localhost:3000
+        npm run test:e2e
+      env:
+        CYPRESS_RECORD: false
     
     - name: Upload coverage reports
+      if: always()
       uses: codecov/codecov-action@v4
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -76,4 +65,5 @@ jobs:
         path: |
           coverage/
           cypress/videos/
-          cypress/screenshots/ 
+          cypress/screenshots/
+        if-no-files-found: ignore 
