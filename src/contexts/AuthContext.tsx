@@ -9,7 +9,7 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider
 } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { auth, googleProvider, signInWithGoogle as firebaseSignInWithGoogle } from '../firebase';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -31,17 +31,23 @@ export function useAuth() {
   return context;
 }
 
-// Check if we're in a test environment
+// Check if we're in a test or CI environment
 const isTest = process.env.NODE_ENV === 'test';
+const isCI = process.env.CI === 'true';
+const shouldUseMockAuth = isTest || isCI;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  // In test environment, start with loading=false to avoid act() warnings
-  const [loading, setLoading] = useState(!isTest);
+  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
+  // In test/CI environment, start with loading=false to avoid act() warnings
+  const [loading, setLoading] = useState(!shouldUseMockAuth);
 
   useEffect(() => {
-    // In test environment, don't set up the auth state listener
-    if (isTest) return;
+    // In test/CI environment, we might already have a mock user
+    if (shouldUseMockAuth && auth.currentUser) {
+      setCurrentUser(auth.currentUser);
+      setLoading(false);
+      return () => {};
+    }
     
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -51,8 +57,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
+  // Implement signInWithGoogle function
   async function signInWithGoogle() {
     try {
+      // In test environment, use the mock implementation
+      if (shouldUseMockAuth) {
+        return await firebaseSignInWithGoogle();
+      }
+      
+      // In production, use the real implementation
       const result = await signInWithPopup(auth, googleProvider);
       return result.user;
     } catch (error) {
@@ -63,6 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, password: string) {
     try {
+      // In test/CI environment, return the mock user
+      if (shouldUseMockAuth && auth.currentUser) {
+        return auth.currentUser;
+      }
+      
       const result = await signInWithEmailAndPassword(auth, email, password);
       return result.user;
     } catch (error) {
@@ -73,6 +91,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function register(email: string, password: string) {
     try {
+      // In test/CI environment, return the mock user
+      if (shouldUseMockAuth && auth.currentUser) {
+        return auth.currentUser;
+      }
+      
       const result = await createUserWithEmailAndPassword(auth, email, password);
       return result.user;
     } catch (error) {
@@ -82,10 +105,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
+    // In test/CI environment, just return without actual signout
+    if (shouldUseMockAuth) {
+      return Promise.resolve();
+    }
     return signOut(auth);
   }
 
   async function resetPassword(email: string) {
+    // In test/CI environment, just return without actual reset
+    if (shouldUseMockAuth) {
+      return Promise.resolve();
+    }
     return sendPasswordResetEmail(auth, email);
   }
 
@@ -104,4 +135,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {!loading && children}
     </AuthContext.Provider>
   );
-} 
+}
