@@ -147,10 +147,44 @@ git push --no-verify
 
 ## Continuous Integration
 
-Tests are automatically run on:
-- Pull request creation
+The project uses GitHub Actions for automated testing and deployment. The following workflows are configured:
+
+### Main Workflow (`main.yml`)
+Triggered on:
+- Pull request creation/updates targeting main branch
 - Push to main branch
-- Daily scheduled runs
+
+This workflow:
+- Runs on Ubuntu with Node.js 18.x and 20.x
+- Executes unit tests with coverage reporting
+- Runs end-to-end tests
+- Uploads test results and coverage reports
+- Reports coverage to Codecov
+
+### Scheduled Tests (`scheduled.yml`)
+Runs daily at 00:00 UTC to ensure ongoing stability:
+- Executes full test suite
+- Runs end-to-end tests
+- Creates GitHub issue if tests fail
+- Helps detect environmental or dependency-related issues
+
+### Release Workflow (`release.yml`)
+Triggered when a new release is published:
+- Runs full test suite
+- Creates production build
+- Deploys to hosting platform (e.g., GitHub Pages)
+- Archives build artifacts
+
+### CI/CD Status
+All workflows must pass before:
+- Merging pull requests
+- Deploying to production
+- Publishing new releases
+
+Test results and artifacts are retained for:
+- Coverage reports: Indefinitely on Codecov
+- Build artifacts: 30 days
+- Test results: Available as workflow artifacts
 
 ## Next Steps
 
