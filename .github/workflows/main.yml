@@ -30,7 +30,11 @@ jobs:
     
     - name: Install dependencies
       run: |
-        npm install -g npm@latest
+        if [ "${{ matrix.node-version }}" = "18.x" ]; then
+          npm install -g npm@10.2.4
+        else
+          npm install -g npm@latest
+        fi
         npm ci
         npm install -D wait-on
       
