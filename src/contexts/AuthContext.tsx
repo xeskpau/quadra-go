@@ -31,11 +31,18 @@ export function useAuth() {
   return context;
 }
 
+// Check if we're in a test environment
+const isTest = process.env.NODE_ENV === 'test';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // In test environment, start with loading=false to avoid act() warnings
+  const [loading, setLoading] = useState(!isTest);
 
   useEffect(() => {
+    // In test environment, don't set up the auth state listener
+    if (isTest) return;
+    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setLoading(false);

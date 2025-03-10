@@ -41,4 +41,18 @@ class ResizeObserver {
   }
 }
 
-window.ResizeObserver = ResizeObserver as unknown as typeof window.ResizeObserver; 
+window.ResizeObserver = ResizeObserver as unknown as typeof window.ResizeObserver;
+
+// Mock firebase
+jest.mock('firebase/auth', () => {
+  return {
+    getAuth: jest.fn(() => ({})),
+    signInWithPopup: jest.fn(() => Promise.resolve({ user: {} })),
+    signInWithEmailAndPassword: jest.fn(() => Promise.resolve({ user: {} })),
+    createUserWithEmailAndPassword: jest.fn(() => Promise.resolve({ user: {} })),
+    signOut: jest.fn(() => Promise.resolve()),
+    onAuthStateChanged: jest.fn(() => jest.fn()),
+    sendPasswordResetEmail: jest.fn(() => Promise.resolve()),
+    GoogleAuthProvider: jest.fn(() => ({})),
+  };
+}); 

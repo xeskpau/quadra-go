@@ -163,7 +163,9 @@ const FeatureDescription = styled.p`
   line-height: 1.5;
 `;
 
-const Footer = styled.footer`
+const Footer = styled.footer.attrs({
+  role: 'contentinfo'
+})`
   background-color: #2d3748;
   color: white;
   text-align: center;
