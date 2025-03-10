@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import App from '../App';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
@@ -69,5 +69,38 @@ describe('App', () => {
     const loginButton = screen.getByTestId('login-button');
     expect(loginButton).toBeInTheDocument();
     expect(loginButton).toHaveTextContent(/Log In/i);
+  });
+
+  it('displays login modal when login button is clicked', () => {
+    renderWithAuth(<App />);
+    
+    // Modal should not be visible initially
+    expect(screen.queryByTestId('modal-overlay')).not.toBeInTheDocument();
+    
+    // Click login button
+    const loginButton = screen.getByTestId('login-button');
+    fireEvent.click(loginButton);
+    
+    // Modal should now be visible
+    expect(screen.getByTestId('modal-overlay')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Log In' })).toBeInTheDocument();
+  });
+  
+  it('closes login modal when clicking close button', () => {
+    renderWithAuth(<App />);
+    
+    // Open the modal
+    const loginButton = screen.getByTestId('login-button');
+    fireEvent.click(loginButton);
+    
+    // Modal should be visible
+    expect(screen.getByTestId('modal-overlay')).toBeInTheDocument();
+    
+    // Click the close button
+    const closeButton = screen.getByTestId('close-modal-button');
+    fireEvent.click(closeButton);
+    
+    // Modal should now be closed
+    expect(screen.queryByTestId('modal-overlay')).not.toBeInTheDocument();
   });
 }); 

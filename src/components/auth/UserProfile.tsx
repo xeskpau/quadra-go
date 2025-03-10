@@ -155,9 +155,20 @@ const UserProfile: React.FC = () => {
         aria-label="User menu"
         data-testid="profile-button"
       >
-        <Avatar photoURL={currentUser?.photoURL}>
-          {!currentUser?.photoURL && getInitials()}
-        </Avatar>
+        {currentUser?.photoURL ? (
+          <Avatar 
+            photoURL={currentUser.photoURL} 
+            data-testid="user-avatar-photo"
+            aria-label="User avatar with photo" 
+          />
+        ) : (
+          <Avatar 
+            data-testid="user-avatar-initials"
+            aria-label="User avatar with initials"
+          >
+            {getInitials()}
+          </Avatar>
+        )}
       </ProfileButton>
       
       {isOpen && (
