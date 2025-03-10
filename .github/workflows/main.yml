@@ -26,29 +26,35 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-        cache-dependency-path: '**/package-lock.json'
+        cache-dependency-path: package-lock.json
     
     - name: Install dependencies
       run: |
         npm install -g npm@latest
         npm ci
+        npm install -D wait-on
       
     - name: Run unit tests with coverage
       run: npm run test:ci
+      env:
+        CI: true
       
     - name: Build application
       run: npm run build
+      env:
+        CI: true
       
     - name: Install Cypress
       run: npx cypress install
         
     - name: Start app and run Cypress tests
       run: |
-        npm start & npx wait-on http://localhost:3000
+        npm start & npx wait-on --timeout 60000 http://localhost:3000
         npm run test:e2e
       env:
+        CI: true
         CYPRESS_RECORD: false
-    
+
     - name: Upload coverage reports
       if: always()
       uses: codecov/codecov-action@v4
