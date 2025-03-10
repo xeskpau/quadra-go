@@ -7,13 +7,22 @@ module.exports = {
     path: path.resolve(__dirname, 'build'),
     filename: 'bundle.js',
     publicPath: '/',
+    clean: true
   },
   module: {
     rules: [
       {
         test: /\.(ts|tsx)$/,
         exclude: /node_modules/,
-        use: 'ts-loader',
+        use: {
+          loader: 'ts-loader',
+          options: {
+            transpileOnly: false,
+            compilerOptions: {
+              noEmit: false
+            }
+          }
+        }
       },
       {
         test: /\.css$/,
@@ -26,11 +35,13 @@ module.exports = {
     ],
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js'],
+    extensions: ['.tsx', '.ts', '.js', '.jsx'],
+    modules: [path.resolve(__dirname, 'src'), 'node_modules']
   },
   plugins: [
     new HtmlWebpackPlugin({
       template: './public/index.html',
+      inject: true
     }),
   ],
   devServer: {
