@@ -233,7 +233,12 @@ export const auth = {
     if (user && user.password === password) {
       return { user };
     }
-    throw new Error('Invalid email or password');
+    // Throw a FirebaseError with the code 'auth/invalid-credential'
+    const error = new Error('Firebase: Error (auth/invalid-credential)');
+    error.name = 'FirebaseError';
+    // @ts-ignore
+    error.code = 'auth/invalid-credential';
+    throw error;
   },
   createUserWithEmailAndPassword: async (email: string, password: string) => {
     if (mockUsers[email]) {
