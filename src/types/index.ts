@@ -146,6 +146,7 @@ export interface SportsCenterFilter {
   date?: Date;
   startTime?: string;
   endTime?: string;
+  duration?: number; // Duration in minutes (60, 90, 120)
   location?: {
     latitude: number;
     longitude: number;
@@ -156,5 +157,7 @@ export interface SportsCenterFilter {
     min: number;
     max: number;
   };
-  view?: 'map' | 'list'; // Added view preference
+  view?: 'map' | 'list'; // View preference
+  showUnavailable?: boolean; // Whether to show unavailable sports centers
+  sortBy?: 'relevance' | 'distance' | 'price'; // Sorting option
 } 

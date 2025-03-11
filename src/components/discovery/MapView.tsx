@@ -4,6 +4,7 @@ import { Icon, LatLngExpression } from 'leaflet';
 import styled from 'styled-components';
 import { SportsCenter } from '../../types';
 import 'leaflet/dist/leaflet.css';
+import { format } from 'date-fns';
 
 // Fix for default marker icons in React Leaflet
 // Use string paths instead of direct imports
@@ -80,6 +81,17 @@ const SportTag = styled.span`
   font-size: 0.75rem;
 `;
 
+const PopupAvailability = styled.div<{ $available: boolean }>`
+  margin-top: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  background-color: ${props => props.$available ? '#E6FFFA' : '#FED7D7'};
+  color: ${props => props.$available ? '#2C7A7B' : '#C53030'};
+`;
+
 // Component to recenter map when user location changes
 interface RecenterMapProps {
   position: LatLngExpression;
@@ -93,11 +105,23 @@ const RecenterMap: React.FC<RecenterMapProps> = ({ position }) => {
 
 interface MapViewProps {
   sportsCenters: SportsCenter[];
-  userLocation?: { latitude: number; longitude: number };
+  userLocation?: { latitude: number; longitude: number; radius: number };
   calculateDistance: (lat1: number, lon1: number, lat2: number, lon2: number) => number;
+  availableCenters?: Set<string>;
+  date?: Date;
+  startTime?: string;
+  duration?: number;
 }
 
-const MapView: React.FC<MapViewProps> = ({ sportsCenters, userLocation, calculateDistance }) => {
+const MapView: React.FC<MapViewProps> = ({ 
+  sportsCenters, 
+  userLocation, 
+  calculateDistance,
+  availableCenters = new Set(),
+  date,
+  startTime,
+  duration
+}) => {
   const [hoveredCenter, setHoveredCenter] = useState<string | null>(null);
   
   // Default center (San Francisco)
@@ -105,6 +129,22 @@ const MapView: React.FC<MapViewProps> = ({ sportsCenters, userLocation, calculat
   const center = userLocation 
     ? [userLocation.latitude, userLocation.longitude] as LatLngExpression 
     : defaultCenter;
+
+  // Create a custom icon based on availability
+  const createIcon = (isAvailable: boolean) => {
+    const iconUrl = isAvailable 
+      ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
+      : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
+    
+    return new Icon({
+      iconUrl,
+      shadowUrl,
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41]
+    });
+  };
 
   return (
     <MapWrapper data-testid="map-view">
@@ -132,7 +172,14 @@ const MapView: React.FC<MapViewProps> = ({ sportsCenters, userLocation, calculat
                 shadowSize: [41, 41]
               })}
             >
-              <Popup>Your Location</Popup>
+              <Popup>
+                <PopupContent>
+                  <PopupTitle>Your Location</PopupTitle>
+                  {userLocation.radius && (
+                    <PopupAddress>Search radius: {userLocation.radius} km</PopupAddress>
+                  )}
+                </PopupContent>
+              </Popup>
             </Marker>
           </>
         )}
@@ -155,16 +202,20 @@ const MapView: React.FC<MapViewProps> = ({ sportsCenters, userLocation, calculat
             );
           }
           
+          // Check if center is available for the selected time slot
+          const isAvailable = !date || !startTime || !duration || availableCenters.has(center.id);
+          
           return (
             <Marker 
               key={center.id}
               position={[center.location.latitude, center.location.longitude]}
-              icon={DefaultIcon}
+              icon={date && startTime && duration ? createIcon(isAvailable) : DefaultIcon}
               eventHandlers={{
                 mouseover: () => setHoveredCenter(center.id),
                 mouseout: () => setHoveredCenter(null),
                 click: () => setHoveredCenter(center.id)
               }}
+              opacity={isAvailable ? 1 : 0.7}
             >
               {(isHovered || true) && (
                 <Popup>
@@ -182,6 +233,15 @@ const MapView: React.FC<MapViewProps> = ({ sportsCenters, userLocation, calculat
                         <SportTag key={sport.id}>{sport.name}</SportTag>
                       ))}
                     </PopupSports>
+                    
+                    {date && startTime && duration && (
+                      <PopupAvailability $available={isAvailable}>
+                        {isAvailable 
+                          ? `Available on ${format(date, 'MMM d')} at ${startTime}`
+                          : `Not available on ${format(date, 'MMM d')} at ${startTime}`
+                        }
+                      </PopupAvailability>
+                    )}
                   </PopupContent>
                 </Popup>
               )}

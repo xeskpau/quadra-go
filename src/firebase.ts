@@ -53,6 +53,54 @@ const mockSports: Sport[] = [
   { id: 'futsal', name: 'Futsal', icon: 'futsal' }
 ];
 
+// Mock facilities for development mode
+const mockFacilities: Facility[] = [
+  {
+    id: 'facility1',
+    sportsCenterId: 'center1',
+    name: 'Tennis Court 1',
+    sportId: 'tennis',
+    description: 'Professional tennis court with clay surface',
+    capacity: 4,
+    pricePerHour: 30,
+    isIndoor: false,
+    amenities: ['lights', 'seating']
+  },
+  {
+    id: 'facility2',
+    sportsCenterId: 'center1',
+    name: 'Tennis Court 2',
+    sportId: 'tennis',
+    description: 'Professional tennis court with hard surface',
+    capacity: 4,
+    pricePerHour: 35,
+    isIndoor: true,
+    amenities: ['lights', 'seating', 'air-conditioning']
+  },
+  {
+    id: 'facility3',
+    sportsCenterId: 'center2',
+    name: 'Basketball Court 1',
+    sportId: 'basketball',
+    description: 'Full-size basketball court',
+    capacity: 10,
+    pricePerHour: 40,
+    isIndoor: true,
+    amenities: ['lights', 'seating', 'scoreboard']
+  },
+  {
+    id: 'facility4',
+    sportsCenterId: 'center3',
+    name: 'Swimming Pool',
+    sportId: 'swimming',
+    description: 'Olympic-size swimming pool',
+    capacity: 20,
+    pricePerHour: 50,
+    isIndoor: true,
+    amenities: ['lights', 'seating', 'lockers', 'showers']
+  }
+];
+
 const mockSportsCenters: SportsCenter[] = [
   {
     id: 'sc1',
@@ -200,6 +248,48 @@ const mockSportsCenters: SportsCenter[] = [
     location: { latitude: 38.5816, longitude: -121.4944 }
   }
 ];
+
+// Create mock time slots for the next 7 days
+const createMockTimeSlots = (): TimeSlot[] => {
+  const timeSlots: TimeSlot[] = [];
+  
+  // Create time slots for each facility for the next 7 days
+  mockFacilities.forEach((facility: Facility) => {
+    // Create slots for the next 7 days
+    for (let day = 0; day < 7; day++) {
+      const date = new Date();
+      date.setDate(date.getDate() + day);
+      
+      // Create slots from 8:00 to 22:00 with 1-hour intervals
+      for (let hour = 8; hour < 22; hour++) {
+        const startTime = new Date(date);
+        startTime.setHours(hour, 0, 0, 0);
+        
+        const endTime = new Date(date);
+        endTime.setHours(hour + 1, 0, 0, 0);
+        
+        // Make some slots unavailable randomly
+        const isAvailable = Math.random() > 0.3; // 70% chance of being available
+        
+        timeSlots.push({
+          id: `${facility.id}-${startTime.toISOString()}`,
+          facilityId: facility.id,
+          sportsCenterId: facility.sportsCenterId,
+          startTime,
+          endTime,
+          price: facility.pricePerHour,
+          isAvailable,
+          isSpecialOffer: Math.random() > 0.8, // 20% chance of being a special offer
+          specialOfferPrice: Math.random() > 0.8 ? facility.pricePerHour * 0.8 : undefined
+        });
+      }
+    }
+  });
+  
+  return timeSlots;
+};
+
+const mockTimeSlots = createMockTimeSlots();
 
 // Declare variables to be exported
 let auth: any;
@@ -758,6 +848,95 @@ export const getSports = async (): Promise<Sport[]> => {
   });
   
   return sports;
+};
+
+// Get time slots by sports center and date
+export const getTimeSlotsBySportsCenterAndDate = async (
+  sportsCenterId: string, 
+  date: Date,
+  startTime?: string,
+  duration?: number
+): Promise<TimeSlot[]> => {
+  if (shouldUseMockConfig) {
+    console.log('Using mock getTimeSlotsBySportsCenterAndDate');
+    
+    // Filter time slots by sports center and date
+    let filteredTimeSlots = mockTimeSlots.filter(slot => {
+      const slotDate = new Date(slot.startTime);
+      return (
+        slot.sportsCenterId === sportsCenterId &&
+        slotDate.getDate() === date.getDate() &&
+        slotDate.getMonth() === date.getMonth() &&
+        slotDate.getFullYear() === date.getFullYear()
+      );
+    });
+    
+    // Filter by start time if provided
+    if (startTime) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      filteredTimeSlots = filteredTimeSlots.filter(slot => {
+        const slotHours = slot.startTime.getHours();
+        const slotMinutes = slot.startTime.getMinutes();
+        return slotHours >= hours && (slotHours > hours || slotMinutes >= minutes);
+      });
+    }
+    
+    // Filter by duration if provided
+    if (duration) {
+      // For now, we'll just return the slots as is since our mock data has 1-hour slots
+      // In a real implementation, we would check if there are consecutive available slots
+    }
+    
+    return filteredTimeSlots;
+  }
+  
+  console.log('Using real getTimeSlotsBySportsCenterAndDate');
+  const timeSlotsRef = firestoreCollection(db, 'timeSlots');
+  
+  // Create start and end of the day for the given date
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  // Create query to get time slots for the given sports center and date
+  const q = query(
+    timeSlotsRef,
+    where('sportsCenterId', '==', sportsCenterId),
+    where('startTime', '>=', Timestamp.fromDate(startOfDay)),
+    where('startTime', '<=', Timestamp.fromDate(endOfDay))
+  );
+  
+  const querySnapshot = await firestoreGetDocs(q);
+  
+  const timeSlots: TimeSlot[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    timeSlots.push({
+      id: doc.id,
+      facilityId: data.facilityId,
+      sportsCenterId: data.sportsCenterId,
+      startTime: data.startTime.toDate(),
+      endTime: data.endTime.toDate(),
+      price: data.price,
+      isAvailable: data.isAvailable,
+      isSpecialOffer: data.isSpecialOffer,
+      specialOfferPrice: data.specialOfferPrice
+    });
+  });
+  
+  // Filter by start time if provided
+  if (startTime) {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    return timeSlots.filter(slot => {
+      const slotHours = slot.startTime.getHours();
+      const slotMinutes = slot.startTime.getMinutes();
+      return slotHours >= hours && (slotHours > hours || slotMinutes >= minutes);
+    });
+  }
+  
+  return timeSlots;
 };
 
 // Export Firebase objects at the top level
