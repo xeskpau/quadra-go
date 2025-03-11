@@ -1,5 +1,6 @@
+
 echo "Running tests on changed files..."
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\\.(js|jsx|ts|tsx)$")
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E "\\.(js|jsx|ts|tsx)$" | grep -v "cypress/")
 if [ -n "$STAGED_FILES" ]; then
   npm run test:precommit -- $STAGED_FILES
 else

@@ -12,6 +12,7 @@ module.exports = {
     }],
   },
   testMatch: ['**/__tests__/**/*.test.(ts|tsx)'],
+  testPathIgnorePatterns: ['/node_modules/', '/cypress/'],
   collectCoverageFrom: [
     'src/**/*.{js,jsx,ts,tsx}',
     '!src/**/*.d.ts',

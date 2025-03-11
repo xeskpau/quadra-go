@@ -12,7 +12,7 @@
     "test:ci": "jest --ci --coverage",
     "test:e2e": "cypress run",
     "cypress:open": "cypress open",
-    "test:precommit": "jest --bail --findRelatedTests",
+    "test:precommit": "jest --bail --findRelatedTests --passWithNoTests",
     "test:prepush": "jest --coverage --coverageThreshold='{\"global\":{\"branches\":80,\"functions\":80,\"lines\":80,\"statements\":80}}' && npm run test:e2e",
     "prepare": "husky install"
   },
