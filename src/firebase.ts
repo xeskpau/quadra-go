@@ -4,17 +4,20 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
-  User,
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signOut,
+  sendPasswordResetEmail,
+  User,
+  UserCredential
 } from 'firebase/auth';
 import { 
   getFirestore, 
-  collection, 
+  collection as firestoreCollection,
   doc, 
   setDoc, 
   getDoc, 
-  getDocs, 
+  getDocs as firestoreGetDocs, 
   query, 
   where, 
   addDoc, 
@@ -28,28 +31,244 @@ import { SportsCenter, SportsCenterUser, Facility, TimeSlot, Booking, Promotion,
 // Check if we're in a test or CI environment
 const isTest = process.env.NODE_ENV === 'test';
 const isCI = process.env.CI === 'true';
-const shouldUseMockConfig = isTest || isCI;
+const isDev = process.env.NODE_ENV === 'development';
+const shouldUseMockConfig = isTest || isCI || isDev;
+
+console.log('Firebase config:', { isTest, isCI, isDev, shouldUseMockConfig });
 
 // Define the type for signInWithGoogle function
 type SignInWithGoogleFunction = () => Promise<User | null>;
+
+// Mock data for development mode
+const mockSports: Sport[] = [
+  { id: 'basketball', name: 'Basketball', icon: 'basketball' },
+  { id: 'volleyball', name: 'Volleyball', icon: 'volleyball' },
+  { id: 'tennis', name: 'Tennis', icon: 'tennis' },
+  { id: 'swimming', name: 'Swimming', icon: 'swimming' },
+  { id: 'soccer', name: 'Soccer', icon: 'soccer' },
+  { id: 'yoga', name: 'Yoga', icon: 'yoga' },
+  { id: 'water-polo', name: 'Water Polo', icon: 'water-polo' },
+  { id: 'diving', name: 'Diving', icon: 'diving' },
+  { id: 'badminton', name: 'Badminton', icon: 'badminton' },
+  { id: 'futsal', name: 'Futsal', icon: 'futsal' }
+];
+
+const mockSportsCenters: SportsCenter[] = [
+  {
+    id: 'sc1',
+    name: 'Golden Gate Sports Complex',
+    description: 'A premier sports facility in the heart of San Francisco',
+    address: '123 Golden Gate Ave',
+    city: 'San Francisco',
+    state: 'CA',
+    zipCode: '94102',
+    phone: '(415) 555-1234',
+    email: 'info@goldengatesports.com',
+    website: 'https://www.goldengatesports.com',
+    photoURL: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+    ownerId: 'owner1',
+    sports: mockSports.slice(0, 3),
+    amenities: ['parking', 'showers', 'lockers', 'cafe'],
+    openingHours: {
+      monday: { open: '06:00', close: '22:00' },
+      tuesday: { open: '06:00', close: '22:00' },
+      wednesday: { open: '06:00', close: '22:00' },
+      thursday: { open: '06:00', close: '22:00' },
+      friday: { open: '06:00', close: '22:00' },
+      saturday: { open: '08:00', close: '20:00' },
+      sunday: { open: '08:00', close: '18:00' }
+    },
+    createdAt: new Date('2023-01-15'),
+    updatedAt: new Date('2023-06-20'),
+    staffIds: ['staff1', 'staff2'],
+    location: { latitude: 37.7749, longitude: -122.4194 }
+  },
+  {
+    id: 'sc2',
+    name: 'LA Fitness Center',
+    description: 'Modern fitness and sports center in Los Angeles',
+    address: '456 Hollywood Blvd',
+    city: 'Los Angeles',
+    state: 'CA',
+    zipCode: '90028',
+    phone: '(213) 555-6789',
+    email: 'info@lafitness.com',
+    website: 'https://www.lafitnesscenter.com',
+    photoURL: 'https://images.unsplash.com/photo-1570829460005-c840387bb1ca?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+    ownerId: 'owner2',
+    sports: [mockSports[2], mockSports[0], mockSports[3], mockSports[5]],
+    amenities: ['parking', 'showers', 'lockers', 'sauna', 'spa'],
+    openingHours: {
+      monday: { open: '05:00', close: '23:00' },
+      tuesday: { open: '05:00', close: '23:00' },
+      wednesday: { open: '05:00', close: '23:00' },
+      thursday: { open: '05:00', close: '23:00' },
+      friday: { open: '05:00', close: '23:00' },
+      saturday: { open: '07:00', close: '22:00' },
+      sunday: { open: '07:00', close: '20:00' }
+    },
+    createdAt: new Date('2023-02-10'),
+    updatedAt: new Date('2023-07-15'),
+    staffIds: ['staff3', 'staff4'],
+    location: { latitude: 34.0522, longitude: -118.2437 }
+  },
+  {
+    id: 'sc3',
+    name: 'Bay Area Tennis Club',
+    description: 'Premier tennis facility with indoor and outdoor courts',
+    address: '789 Bay Shore Dr',
+    city: 'Oakland',
+    state: 'CA',
+    zipCode: '94612',
+    phone: '(510) 555-9012',
+    email: 'info@bayareatennis.com',
+    website: 'https://www.bayareatennis.com',
+    photoURL: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+    ownerId: 'owner3',
+    sports: [mockSports[2]],
+    amenities: ['parking', 'showers', 'pro shop', 'coaching'],
+    openingHours: {
+      monday: { open: '07:00', close: '21:00' },
+      tuesday: { open: '07:00', close: '21:00' },
+      wednesday: { open: '07:00', close: '21:00' },
+      thursday: { open: '07:00', close: '21:00' },
+      friday: { open: '07:00', close: '21:00' },
+      saturday: { open: '08:00', close: '19:00' },
+      sunday: { open: '08:00', close: '19:00' }
+    },
+    createdAt: new Date('2023-03-05'),
+    updatedAt: new Date('2023-08-10'),
+    staffIds: ['staff5'],
+    location: { latitude: 37.8044, longitude: -122.2711 }
+  },
+  {
+    id: 'sc4',
+    name: 'San Diego Aquatic Center',
+    description: 'State-of-the-art swimming and water sports facility',
+    address: '321 Ocean View Ave',
+    city: 'San Diego',
+    state: 'CA',
+    zipCode: '92101',
+    phone: '(619) 555-3456',
+    email: 'info@sdaquatic.com',
+    website: 'https://www.sdaquaticcenter.com',
+    photoURL: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+    ownerId: 'owner4',
+    sports: [mockSports[3], mockSports[6], mockSports[7]],
+    amenities: ['parking', 'showers', 'lockers', 'cafe', 'pro shop'],
+    openingHours: {
+      monday: { open: '06:00', close: '20:00' },
+      tuesday: { open: '06:00', close: '20:00' },
+      wednesday: { open: '06:00', close: '20:00' },
+      thursday: { open: '06:00', close: '20:00' },
+      friday: { open: '06:00', close: '20:00' },
+      saturday: { open: '08:00', close: '18:00' },
+      sunday: { open: '08:00', close: '18:00' }
+    },
+    createdAt: new Date('2023-04-20'),
+    updatedAt: new Date('2023-09-05'),
+    staffIds: ['staff6', 'staff7'],
+    location: { latitude: 32.7157, longitude: -117.1611 }
+  },
+  {
+    id: 'sc5',
+    name: 'Sacramento Sports Arena',
+    description: 'Multi-purpose sports arena for various indoor sports',
+    address: '654 Capitol Mall',
+    city: 'Sacramento',
+    state: 'CA',
+    zipCode: '95814',
+    phone: '(916) 555-7890',
+    email: 'info@sacsports.com',
+    website: 'https://www.sacsportsarena.com',
+    photoURL: 'https://images.unsplash.com/photo-1505250469679-203ad9ced0cb?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+    ownerId: 'owner5',
+    sports: [mockSports[0], mockSports[1], mockSports[8], mockSports[9]],
+    amenities: ['parking', 'showers', 'lockers', 'cafe', 'equipment rental'],
+    openingHours: {
+      monday: { open: '08:00', close: '22:00' },
+      tuesday: { open: '08:00', close: '22:00' },
+      wednesday: { open: '08:00', close: '22:00' },
+      thursday: { open: '08:00', close: '22:00' },
+      friday: { open: '08:00', close: '22:00' },
+      saturday: { open: '09:00', close: '20:00' },
+      sunday: { open: '09:00', close: '18:00' }
+    },
+    createdAt: new Date('2023-05-15'),
+    updatedAt: new Date('2023-10-01'),
+    staffIds: ['staff8'],
+    location: { latitude: 38.5816, longitude: -121.4944 }
+  }
+];
 
 // Declare variables to be exported
 let auth: any;
 let googleProvider: any;
 let signInWithGoogle: SignInWithGoogleFunction;
 let db: any;
+let collection: typeof firestoreCollection;
+let getDocs: typeof firestoreGetDocs;
 
 // If in test/CI environment, use mock implementation
 if (shouldUseMockConfig) {
   try {
     // Import mock implementation
-    const mockFirebase = require('./__mocks__/firebase');
+    console.log('Loading mock Firebase implementation...');
     
-    // Assign mock objects to our variables
-    auth = mockFirebase.auth;
-    googleProvider = mockFirebase.googleProvider;
-    signInWithGoogle = mockFirebase.signInWithGoogle;
-    db = mockFirebase.db;
+    if (isTest) {
+      // Use Jest mock for tests
+      const mockFirebase = require('./__mocks__/firebase');
+      console.log('Jest mock Firebase loaded successfully');
+      
+      // Assign mock objects to our variables
+      auth = mockFirebase.auth;
+      googleProvider = mockFirebase.googleProvider;
+      signInWithGoogle = mockFirebase.signInWithGoogle;
+      db = mockFirebase.db;
+      collection = mockFirebase.collection;
+      getDocs = mockFirebase.getDocs;
+    } else {
+      // Use simple mock for development
+      console.log('Using simple mock Firebase implementation');
+      
+      // Assign mock objects to our variables
+      auth = { 
+        currentUser: null,
+        onAuthStateChanged: (callback: (user: User | null) => void) => {
+          callback(null);
+          return () => {};
+        },
+        signOut: async () => Promise.resolve()
+      };
+      
+      googleProvider = { setCustomParameters: () => {} };
+      signInWithGoogle = async () => null;
+      db = {};
+      
+      // Create mock collection function that matches the Firestore type
+      collection = ((...args: any[]) => {
+        return { id: 'mock-collection', path: args.join('/') };
+      }) as typeof firestoreCollection;
+      
+      // Create mock getDocs function that matches the Firestore type
+      getDocs = (async () => {
+        return {
+          forEach: () => {},
+          docs: [],
+          metadata: { 
+            hasPendingWrites: false, 
+            fromCache: false,
+            isEqual: () => true
+          },
+          query: {} as any,
+          size: 0,
+          empty: true,
+          docChanges: () => []
+        } as any;
+      }) as unknown as typeof firestoreGetDocs;
+    }
+    
+    console.log('Mock Firebase functions assigned');
   } catch (error) {
     console.warn('Failed to load mock Firebase implementation:', error);
     
@@ -72,22 +291,27 @@ if (shouldUseMockConfig) {
       return null;
     };
 
-    db = {
-      collection: () => ({
-        doc: () => ({
-          get: async () => ({ exists: false, data: () => null }),
-          set: async () => {},
-          update: async () => {}
-        }),
-        add: async () => ({ id: 'mock-id' }),
-        where: () => ({
-          get: async () => ({
-            docs: [],
-            forEach: () => {}
-          })
-        })
-      })
-    };
+    db = {};
+    
+    collection = ((...args: any[]) => {
+      return { id: 'mock-collection', path: args.join('/') };
+    }) as typeof firestoreCollection;
+    
+    getDocs = (async () => {
+      return {
+        forEach: () => {},
+        docs: [],
+        metadata: { 
+          hasPendingWrites: false, 
+          fromCache: false,
+          isEqual: () => true
+        },
+        query: {} as any,
+        size: 0,
+        empty: true,
+        docChanges: () => []
+      } as any;
+    }) as unknown as typeof firestoreGetDocs;
   }
 } else {
   // For production, use real Firebase implementation
@@ -203,7 +427,7 @@ export const getSportsCenterUser = async (userId: string): Promise<SportsCenterU
 
 // Sports Center functions
 export const createSportsCenter = async (data: Omit<SportsCenter, 'id' | 'createdAt' | 'updatedAt'>): Promise<SportsCenter> => {
-  const sportsCenterRef = collection(db, sportsCentersCollection);
+  const sportsCenterRef = firestoreCollection(db, sportsCentersCollection);
   const now = new Date();
   
   const sportsCenterData: Omit<SportsCenter, 'id'> = {
@@ -228,9 +452,9 @@ export const getSportsCenter = async (id: string): Promise<SportsCenter | null> 
 };
 
 export const getSportsCentersByOwner = async (ownerId: string): Promise<SportsCenter[]> => {
-  const sportsCentersRef = collection(db, sportsCentersCollection);
+  const sportsCentersRef = firestoreCollection(db, sportsCentersCollection);
   const q = query(sportsCentersRef, where('ownerId', '==', ownerId));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await firestoreGetDocs(q);
   
   const sportsCenters: SportsCenter[] = [];
   querySnapshot.forEach((doc) => {
@@ -247,15 +471,15 @@ export const updateSportsCenter = async (id: string, data: Partial<SportsCenter>
 
 // Facility functions
 export const createFacility = async (data: Omit<Facility, 'id'>): Promise<Facility> => {
-  const facilitiesRef = collection(db, facilitiesCollection);
+  const facilitiesRef = firestoreCollection(db, facilitiesCollection);
   const docRef = await addDoc(facilitiesRef, data);
   return { ...data, id: docRef.id };
 };
 
 export const getFacilitiesBySportsCenter = async (sportsCenterId: string): Promise<Facility[]> => {
-  const facilitiesRef = collection(db, facilitiesCollection);
+  const facilitiesRef = firestoreCollection(db, facilitiesCollection);
   const q = query(facilitiesRef, where('sportsCenterId', '==', sportsCenterId));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await firestoreGetDocs(q);
   
   const facilities: Facility[] = [];
   querySnapshot.forEach((doc) => {
@@ -267,15 +491,15 @@ export const getFacilitiesBySportsCenter = async (sportsCenterId: string): Promi
 
 // TimeSlot functions
 export const createTimeSlot = async (data: Omit<TimeSlot, 'id'>): Promise<TimeSlot> => {
-  const timeSlotsRef = collection(db, timeSlotsCollection);
+  const timeSlotsRef = firestoreCollection(db, timeSlotsCollection);
   const docRef = await addDoc(timeSlotsRef, data);
   return { ...data, id: docRef.id };
 };
 
 export const getTimeSlotsByFacility = async (facilityId: string): Promise<TimeSlot[]> => {
-  const timeSlotsRef = collection(db, timeSlotsCollection);
+  const timeSlotsRef = firestoreCollection(db, timeSlotsCollection);
   const q = query(timeSlotsRef, where('facilityId', '==', facilityId));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await firestoreGetDocs(q);
   
   const timeSlots: TimeSlot[] = [];
   querySnapshot.forEach((doc) => {
@@ -287,9 +511,9 @@ export const getTimeSlotsByFacility = async (facilityId: string): Promise<TimeSl
 
 // Booking functions
 export const getBookingsBySportsCenter = async (sportsCenterId: string): Promise<Booking[]> => {
-  const bookingsRef = collection(db, bookingsCollection);
+  const bookingsRef = firestoreCollection(db, bookingsCollection);
   const q = query(bookingsRef, where('sportsCenterId', '==', sportsCenterId));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await firestoreGetDocs(q);
   
   const bookings: Booking[] = [];
   querySnapshot.forEach((doc) => {
@@ -301,15 +525,15 @@ export const getBookingsBySportsCenter = async (sportsCenterId: string): Promise
 
 // Promotion functions
 export const createPromotion = async (data: Omit<Promotion, 'id'>): Promise<Promotion> => {
-  const promotionsRef = collection(db, promotionsCollection);
+  const promotionsRef = firestoreCollection(db, promotionsCollection);
   const docRef = await addDoc(promotionsRef, data);
   return { ...data, id: docRef.id };
 };
 
 export const getPromotionsBySportsCenter = async (sportsCenterId: string): Promise<Promotion[]> => {
-  const promotionsRef = collection(db, promotionsCollection);
+  const promotionsRef = firestoreCollection(db, promotionsCollection);
   const q = query(promotionsRef, where('sportsCenterId', '==', sportsCenterId));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await firestoreGetDocs(q);
   
   const promotions: Promotion[] = [];
   querySnapshot.forEach((doc) => {
@@ -325,7 +549,7 @@ export const inviteStaffMember = async (
   email: string, 
   invitedBy: string
 ): Promise<StaffInvitation> => {
-  const invitationRef = collection(db, 'staffInvitations');
+  const invitationRef = firestoreCollection(db, 'staffInvitations');
   
   // Generate a unique token for the invitation
   const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -357,9 +581,9 @@ export const inviteStaffMember = async (
 };
 
 export const getStaffInvitations = async (sportsCenterId: string): Promise<StaffInvitation[]> => {
-  const invitationsRef = collection(db, 'staffInvitations');
+  const invitationsRef = firestoreCollection(db, 'staffInvitations');
   const q = query(invitationsRef, where('sportsCenterId', '==', sportsCenterId));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await firestoreGetDocs(q);
   
   const invitations: StaffInvitation[] = [];
   querySnapshot.forEach((doc) => {
@@ -405,9 +629,9 @@ export const revokeStaffAccess = async (sportsCenterId: string, userId: string):
 
 export const acceptStaffInvitation = async (token: string, userId: string): Promise<SportsCenterUser> => {
   // Find the invitation with the given token
-  const invitationsRef = collection(db, 'staffInvitations');
+  const invitationsRef = firestoreCollection(db, 'staffInvitations');
   const q = query(invitationsRef, where('token', '==', token));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await firestoreGetDocs(q);
   
   if (querySnapshot.empty) {
     throw new Error('Invalid invitation token');
@@ -474,8 +698,14 @@ export const acceptStaffInvitation = async (token: string, userId: string): Prom
 
 // Sports center discovery functions
 export const getSportsCenters = async (): Promise<SportsCenter[]> => {
-  const sportsCentersRef = collection(db, 'sportsCenters');
-  const querySnapshot = await getDocs(sportsCentersRef);
+  if (shouldUseMockConfig) {
+    console.log('Using mock getSportsCenters');
+    return mockSportsCenters;
+  }
+  
+  console.log('Using real getSportsCenters');
+  const sportsCentersRef = firestoreCollection(db, 'sportsCenters');
+  const querySnapshot = await firestoreGetDocs(sportsCentersRef);
   
   const sportsCenters: SportsCenter[] = [];
   querySnapshot.forEach((doc) => {
@@ -494,11 +724,11 @@ export const getSportsCenters = async (): Promise<SportsCenter[]> => {
       photoURL: data.photoURL,
       coverPhotoURL: data.coverPhotoURL,
       location: data.location,
-      sports: data.sports,
-      amenities: data.amenities,
-      openingHours: data.openingHours,
-      createdAt: data.createdAt.toDate(),
-      updatedAt: data.updatedAt.toDate(),
+      sports: data.sports || [],
+      amenities: data.amenities || [],
+      openingHours: data.openingHours || {},
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date(),
       ownerId: data.ownerId,
       staffIds: data.staffIds || []
     });
@@ -508,8 +738,14 @@ export const getSportsCenters = async (): Promise<SportsCenter[]> => {
 };
 
 export const getSports = async (): Promise<Sport[]> => {
-  const sportsRef = collection(db, 'sports');
-  const querySnapshot = await getDocs(sportsRef);
+  if (shouldUseMockConfig) {
+    console.log('Using mock getSports');
+    return mockSports;
+  }
+  
+  console.log('Using real getSports');
+  const sportsRef = firestoreCollection(db, 'sports');
+  const querySnapshot = await firestoreGetDocs(sportsRef);
   
   const sports: Sport[] = [];
   querySnapshot.forEach((doc) => {
@@ -517,7 +753,7 @@ export const getSports = async (): Promise<Sport[]> => {
     sports.push({
       id: doc.id,
       name: data.name,
-      icon: data.icon
+      icon: data.icon,
     });
   });
   

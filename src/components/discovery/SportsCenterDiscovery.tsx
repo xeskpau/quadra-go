@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { SportsCenter, Sport, SportsCenterFilter } from '../../types';
+import { SportsCenter, Sport, SportsCenterFilter } from '../../types/index';
 import { getSportsCenters, getSports } from '../../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -118,7 +118,7 @@ const ButtonGroup = styled.div`
 
 const SportsCenterGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 2rem;
   
   @media (max-width: 768px) {
@@ -128,22 +128,34 @@ const SportsCenterGrid = styled.div`
 
 const SportsCenterCard = styled.div`
   background-color: white;
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
   
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
   }
 `;
 
 const SportsCenterImage = styled.div<{ $imageUrl?: string }>`
-  height: 180px;
+  height: 200px;
   background-image: url(${props => props.$imageUrl || 'https://via.placeholder.com/300x180?text=Sports+Center'});
   background-size: cover;
   background-position: center;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+  }
 `;
 
 const SportsCenterContent = styled.div`
@@ -151,36 +163,92 @@ const SportsCenterContent = styled.div`
 `;
 
 const SportsCenterName = styled.h3`
-  color: #2d3748;
+  color: #1a202c;
   margin-bottom: 0.5rem;
-  font-size: 1.3rem;
+  font-size: 1.4rem;
+  font-weight: 600;
 `;
 
 const SportsCenterAddress = styled.p`
   color: #718096;
-  margin-bottom: 1rem;
+  margin-bottom: 1.2rem;
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  
+  &::before {
+    content: '📍';
+    margin-right: 0.5rem;
+  }
+`;
+
+const InfoRow = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  color: #4a5568;
+  font-size: 0.9rem;
+  
+  &::before {
+    margin-right: 0.5rem;
+  }
+`;
+
+const OpeningHoursInfo = styled(InfoRow)`
+  &::before {
+    content: '🕒';
+  }
+`;
+
+const AmenitiesInfo = styled(InfoRow)`
+  &::before {
+    content: '✨';
+  }
+`;
+
+const Divider = styled.hr`
+  border: 0;
+  height: 1px;
+  background-color: #e2e8f0;
+  margin: 1rem 0;
 `;
 
 const SportsList = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.2rem;
 `;
 
 const SportTag = styled.span`
-  background-color: #ebf4ff;
+  background-color: #ebf8ff;
   color: #3182ce;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 114, 255, 0.1);
+  
+  &::before {
+    content: attr(data-icon);
+    margin-right: 0.3rem;
+  }
 `;
 
 const ViewButton = styled(Button)`
   width: 100%;
   margin-top: 1rem;
+  padding: 0.8rem;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 8px rgba(0, 114, 255, 0.2);
+  }
 `;
 
 const EmptyState = styled.div`
@@ -267,14 +335,19 @@ const SportsCenterDiscovery: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
+        console.log('Loading sports centers and sports...');
         
         // Load sports centers
+        console.log('Calling getSportsCenters()');
         const centers = await getSportsCenters();
+        console.log('Sports centers loaded:', centers);
         setSportsCenters(centers);
         setFilteredCenters(centers);
         
         // Load sports
+        console.log('Calling getSports()');
         const sportsData = await getSports();
+        console.log('Sports loaded:', sportsData);
         setSports(sportsData);
       } catch (err) {
         console.error('Error loading data:', err);
@@ -380,6 +453,32 @@ const SportsCenterDiscovery: React.FC = () => {
     } else {
       setError('Geolocation is not supported by your browser');
     }
+  };
+  
+  // Render sports tags
+  const renderSportsTags = (center: SportsCenter) => {
+    if (!center.sports || center.sports.length === 0) return null;
+    
+    return (
+      <SportsList>
+        {center.sports.slice(0, 3).map((sport, index) => {
+          // Handle case where sport might be a string or a Sport object
+          const sportId = typeof sport === 'string' ? sport : sport.id;
+          const sportName = typeof sport === 'string' 
+            ? sports.find(s => s.id === sport)?.name || sport
+            : sport.name;
+          
+          return (
+            <SportTag key={`${center.id}-sport-${index}`}>
+              {sportName}
+            </SportTag>
+          );
+        })}
+        {center.sports.length > 3 && (
+          <SportTag>+{center.sports.length - 3} more</SportTag>
+        )}
+      </SportsList>
+    );
   };
   
   if (loading) {
@@ -502,14 +601,25 @@ const SportsCenterDiscovery: React.FC = () => {
                 <SportsCenterAddress>
                   {center.address}, {center.city}, {center.state} {center.zipCode}
                 </SportsCenterAddress>
-                <SportsList key={`sports-list-${center.id}`}>
-                  {center.sports.slice(0, 3).map(sport => (
-                    <SportTag key={sport.id}>{sport.name}</SportTag>
-                  ))}
-                  {center.sports.length > 3 && (
-                    <SportTag key="more-sports">+{center.sports.length - 3} more</SportTag>
-                  )}
-                </SportsList>
+                
+                {center.openingHours && center.openingHours.monday && (
+                  <OpeningHoursInfo>
+                    {'open' in center.openingHours.monday ? 
+                      `Open today: ${center.openingHours.monday.open} - ${center.openingHours.monday.close}` : 
+                      'Closed today'}
+                  </OpeningHoursInfo>
+                )}
+                
+                {center.amenities && center.amenities.length > 0 && (
+                  <AmenitiesInfo>
+                    {center.amenities.slice(0, 3).join(', ')}
+                    {center.amenities.length > 3 && ` +${center.amenities.length - 3} more`}
+                  </AmenitiesInfo>
+                )}
+                
+                <Divider />
+                
+                {renderSportsTags(center)}
                 <ViewButton 
                   data-testid={`view-center-${center.id}`}
                   onClick={() => navigate(`/sports-center/${center.id}`)}
