@@ -107,6 +107,8 @@ This ensures that:
 - Only the tests related to changed files are run
 - Tests must pass before the commit is created
 - Fast feedback loop for developers
+- Cypress files (under cypress/ directory) are excluded from Jest testing
+- The `--passWithNoTests` flag is used to handle cases where only Cypress files are changed
 
 #### Pre-push Hook
 Runs full test suite before pushing to remote:
@@ -183,6 +185,19 @@ To ensure tests continue to pass in CI and maintain required coverage thresholds
      - Add to the coverage exclusion list in jest.config.js
      - Only exempt files when absolutely necessary
 
+### Test Configuration
+
+1. **Jest Configuration**:
+   - The project uses Jest for unit and integration testing
+   - Configuration is in `jest.config.js`
+   - Cypress files are explicitly excluded using `testPathIgnorePatterns: ['/node_modules/', '/cypress/']`
+   - This prevents Jest from attempting to run Cypress test files
+
+2. **Pre-commit Hook Configuration**:
+   - The pre-commit hook is configured to exclude Cypress files
+   - It uses a grep filter (`grep -v "cypress/"`) to remove Cypress files from the list of files to test
+   - This prevents Jest from running on Cypress files during pre-commit checks
+
 ### Known Testing Challenges
 
 1. **Firebase Integration**:
@@ -215,6 +230,12 @@ To ensure tests continue to pass in CI and maintain required coverage thresholds
      (importedFunction as unknown) = mockFunction;
      ```
    - Reset mocks between tests to avoid test contamination
+
+6. **Cypress and Jest Integration**:
+   - Cypress and Jest use different testing frameworks and approaches
+   - Cypress files (`.cy.ts`, `.cy.js`) should not be processed by Jest
+   - The pre-commit hook and Jest configuration are set up to exclude Cypress files
+   - When working with Cypress tests, be aware they won't trigger Jest tests in pre-commit hooks
 
 ## Continuous Integration
 

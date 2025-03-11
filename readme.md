@@ -242,10 +242,19 @@ npm run cypress:open
 
 The project is configured with Git hooks to ensure code quality:
 
-1.  **Pre-commit Hook**:  Runs tests for files being committed.
-2.  **Pre-push Hook**: Runs all tests before pushing to the remote repository.
+1.  **Pre-commit Hook**:  
+    - Runs Jest tests for files being committed
+    - Automatically excludes Cypress test files using a grep filter
+    - Uses the `--passWithNoTests` flag to handle cases where only Cypress files are modified
+    - Prevents Jest from attempting to run tests on Cypress E2E test files
 
-These hooks help catch issues early in the development process.
+2.  **Pre-push Hook**: 
+    - Runs all Jest tests with coverage requirements
+    - Verifies that code coverage meets the 80% threshold
+    - Runs all Cypress E2E tests headlessly
+    - Ensures all tests pass before code is pushed to the remote repository
+
+These hooks help catch issues early in the development process and maintain code quality.
 
 ### Testing GitHub Actions Locally (using `act`)
 
