@@ -10,12 +10,49 @@ jest.mock('../contexts/AuthContext', () => {
     ...originalModule,
     useAuth: () => ({
       currentUser: null,
+      userProfile: null,
+      userRole: null,
       loading: false,
       signInWithGoogle: jest.fn(),
       login: jest.fn(),
       register: jest.fn(),
       logout: jest.fn(),
-      resetPassword: jest.fn()
+      resetPassword: jest.fn(),
+      updateUserRole: jest.fn()
+    })
+  };
+});
+
+// Mock the SportsCenterContext
+jest.mock('../contexts/SportsCenterContext', () => {
+  const originalModule = jest.requireActual('../contexts/SportsCenterContext');
+  return {
+    ...originalModule,
+    useSportsCenter: () => ({
+      sportsCenterUser: null,
+      sportsCenters: [],
+      currentSportsCenter: null,
+      facilities: [],
+      timeSlots: [],
+      bookings: [],
+      promotions: [],
+      staffInvitations: [],
+      analyticsData: null,
+      loading: false,
+      error: null,
+      registerAsSportsCenter: jest.fn(),
+      createNewSportsCenter: jest.fn(),
+      updateExistingSportsCenter: jest.fn(),
+      selectSportsCenter: jest.fn(),
+      addFacility: jest.fn(),
+      addTimeSlot: jest.fn(),
+      addPromotion: jest.fn(),
+      refreshBookings: jest.fn(),
+      generateAnalytics: jest.fn(),
+      inviteStaff: jest.fn(),
+      revokeStaff: jest.fn(),
+      acceptInvitation: jest.fn(),
+      refreshStaffInvitations: jest.fn()
     })
   };
 });
@@ -28,33 +65,38 @@ const renderWithAuth = (ui: React.ReactElement) => {
 describe('App', () => {
   it('renders the application title and tagline', () => {
     renderWithAuth(<App />);
-    const titleElement = screen.getByRole('heading', { level: 1 });
-    expect(titleElement).toHaveTextContent(/QuadraGo/i);
+    // Use a more specific selector to get the title in the header
+    const titleElement = screen.getByRole('heading', { name: 'QuadraGo' });
+    expect(titleElement).toBeInTheDocument();
     
-    const taglineElement = screen.getByText(/Connect with sports centers near you/i);
+    // Use a more specific selector for the tagline
+    const taglineElement = screen.getByText('Connect with sports centers near you');
     expect(taglineElement).toBeInTheDocument();
   });
 
-  it('renders the hero section with call to action', () => {
+  it('renders the welcome page with hero section', () => {
     renderWithAuth(<App />);
-    const heroTitle = screen.getByRole('heading', { level: 2 });
-    expect(heroTitle).toHaveTextContent(/Find and Book Sports Facilities with Ease/i);
+    const heroTitle = screen.getByRole('heading', { name: /Welcome to QuadraGo/i });
+    expect(heroTitle).toBeInTheDocument();
     
-    const ctaButton = screen.getByRole('button', { name: /Get Started/i });
-    expect(ctaButton).toBeInTheDocument();
+    const userLoginButton = screen.getByTestId('user-login-button');
+    const sportsCenterButton = screen.getByTestId('sports-center-login-button');
+    
+    expect(userLoginButton).toBeInTheDocument();
+    expect(sportsCenterButton).toBeInTheDocument();
   });
 
   it('renders the features section with three cards', () => {
     renderWithAuth(<App />);
     
-    // Check for feature titles - use more specific selectors
+    // Check for feature titles
     const findNearbyTitle = screen.getByRole('heading', { name: /Find Nearby Facilities/i });
     const easyBookingTitle = screen.getByRole('heading', { name: /Easy Booking/i });
-    const findPlayersTitle = screen.getByRole('heading', { name: /Find Players/i });
+    const variousSportsTitle = screen.getByRole('heading', { name: /Various Sports/i });
     
     expect(findNearbyTitle).toBeInTheDocument();
     expect(easyBookingTitle).toBeInTheDocument();
-    expect(findPlayersTitle).toBeInTheDocument();
+    expect(variousSportsTitle).toBeInTheDocument();
   });
 
   it('renders the footer with copyright information', () => {
@@ -83,7 +125,7 @@ describe('App', () => {
     
     // Modal should now be visible
     expect(screen.getByTestId('modal-overlay')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Log In' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /User Login/i })).toBeInTheDocument();
   });
   
   it('closes login modal when clicking close button', () => {

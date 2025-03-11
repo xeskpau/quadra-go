@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
-  User, 
+  User as FirebaseUser, 
   signInWithPopup, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -10,15 +10,22 @@ import {
   GoogleAuthProvider
 } from 'firebase/auth';
 import { auth, googleProvider, signInWithGoogle as firebaseSignInWithGoogle } from '../firebase';
+import { User } from '../types';
+
+// Define the user role type
+export type UserRole = 'user' | 'premium' | 'sports_center_admin' | 'sports_center_staff';
 
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: FirebaseUser | null;
+  userProfile: User | null;
+  userRole: UserRole | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<User | null>;
-  login: (email: string, password: string) => Promise<User | null>;
-  register: (email: string, password: string) => Promise<User | null>;
+  signInWithGoogle: () => Promise<FirebaseUser | null>;
+  login: (email: string, password: string, role?: UserRole) => Promise<FirebaseUser | null>;
+  register: (email: string, password: string, role?: UserRole) => Promise<FirebaseUser | null>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  updateUserRole: (role: UserRole) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,7 +44,9 @@ const isCI = process.env.CI === 'true';
 const shouldUseMockAuth = isTest || isCI;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User | null>(auth.currentUser);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(auth.currentUser);
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   // In test/CI environment, start with loading=false to avoid act() warnings
   const [loading, setLoading] = useState(!shouldUseMockAuth);
 
@@ -49,8 +58,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return () => {};
     }
     
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      
+      if (user) {
+        // Fetch user profile and role from Firestore
+        try {
+          // This would be implemented in firebase.ts
+          // const profile = await getUserProfile(user.uid);
+          // setUserProfile(profile);
+          // setUserRole(profile.role);
+          
+          // For now, we'll use a mock implementation
+          setUserRole('user'); // Default role
+        } catch (error) {
+          console.error("Error fetching user profile", error);
+        }
+      } else {
+        setUserProfile(null);
+        setUserRole(null);
+      }
+      
       setLoading(false);
     });
 
@@ -74,14 +102,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string, role?: UserRole) {
     try {
       // In test/CI environment, return the mock user
       if (shouldUseMockAuth && auth.currentUser) {
+        if (role) {
+          setUserRole(role);
+        }
         return auth.currentUser;
       }
       
       const result = await signInWithEmailAndPassword(auth, email, password);
+      
+      // If role is provided, update the user's role
+      if (role) {
+        await updateUserRole(role);
+      }
+      
       return result.user;
     } catch (error) {
       console.error("Error logging in", error);
@@ -89,14 +126,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  async function register(email: string, password: string) {
+  async function register(email: string, password: string, role: UserRole = 'user') {
     try {
       // In test/CI environment, return the mock user
       if (shouldUseMockAuth && auth.currentUser) {
+        setUserRole(role);
         return auth.currentUser;
       }
       
       const result = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Set the user's role
+      await updateUserRole(role);
+      
       return result.user;
     } catch (error) {
       console.error("Error registering", error);
@@ -120,14 +162,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return sendPasswordResetEmail(auth, email);
   }
 
+  async function updateUserRole(role: UserRole) {
+    // In test/CI environment, just update the state
+    if (shouldUseMockAuth) {
+      setUserRole(role);
+      return Promise.resolve();
+    }
+    
+    // In production, update the user's role in Firestore
+    // This would be implemented in firebase.ts
+    // await updateUserProfileRole(currentUser?.uid, role);
+    
+    setUserRole(role);
+  }
+
   const value = {
     currentUser,
+    userProfile,
+    userRole,
     loading,
     signInWithGoogle,
     login,
     register,
     logout,
-    resetPassword
+    resetPassword,
+    updateUserRole
   };
 
   return (

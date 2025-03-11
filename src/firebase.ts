@@ -23,7 +23,7 @@ import {
   Timestamp,
   serverTimestamp
 } from 'firebase/firestore';
-import { SportsCenter, SportsCenterUser, Facility, TimeSlot, Booking, Promotion } from './types';
+import { SportsCenter, SportsCenterUser, Facility, TimeSlot, Booking, Promotion, StaffInvitation, Sport } from './types';
 
 // Check if we're in a test or CI environment
 const isTest = process.env.NODE_ENV === 'test';
@@ -171,14 +171,23 @@ export const createSportsCenterUser = async (
   data: Omit<SportsCenterUser, 'id' | 'createdAt'>
 ): Promise<SportsCenterUser> => {
   const userRef = doc(db, sportsCenterUsersCollection, userId);
-  const userData: SportsCenterUser = {
+  
+  // Ensure the status field is set
+  const userData = {
     ...data,
-    id: userId,
-    createdAt: new Date()
+    status: data.status || 'active' // Default to 'active' if not provided
   };
   
-  await setDoc(userRef, userData);
-  return userData;
+  await setDoc(userRef, {
+    ...userData,
+    createdAt: serverTimestamp()
+  });
+  
+  return {
+    id: userId,
+    ...userData,
+    createdAt: new Date()
+  };
 };
 
 export const getSportsCenterUser = async (userId: string): Promise<SportsCenterUser | null> => {
@@ -308,6 +317,211 @@ export const getPromotionsBySportsCenter = async (sportsCenterId: string): Promi
   });
   
   return promotions;
+};
+
+// Staff management functions
+export const inviteStaffMember = async (
+  sportsCenterId: string, 
+  email: string, 
+  invitedBy: string
+): Promise<StaffInvitation> => {
+  const invitationRef = collection(db, 'staffInvitations');
+  
+  // Generate a unique token for the invitation
+  const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  
+  // Set expiration date to 7 days from now
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
+  
+  const invitationData: Omit<StaffInvitation, 'id'> = {
+    sportsCenterId,
+    email,
+    invitedBy,
+    invitedAt: new Date(),
+    status: 'pending',
+    token,
+    expiresAt
+  };
+  
+  const docRef = await addDoc(invitationRef, {
+    ...invitationData,
+    invitedAt: serverTimestamp(),
+    expiresAt: Timestamp.fromDate(expiresAt)
+  });
+  
+  return {
+    ...invitationData,
+    id: docRef.id
+  };
+};
+
+export const getStaffInvitations = async (sportsCenterId: string): Promise<StaffInvitation[]> => {
+  const invitationsRef = collection(db, 'staffInvitations');
+  const q = query(invitationsRef, where('sportsCenterId', '==', sportsCenterId));
+  const querySnapshot = await getDocs(q);
+  
+  const invitations: StaffInvitation[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    invitations.push({
+      id: doc.id,
+      sportsCenterId: data.sportsCenterId,
+      email: data.email,
+      invitedBy: data.invitedBy,
+      invitedAt: data.invitedAt.toDate(),
+      status: data.status,
+      token: data.token,
+      expiresAt: data.expiresAt.toDate()
+    });
+  });
+  
+  return invitations;
+};
+
+export const revokeStaffAccess = async (sportsCenterId: string, userId: string): Promise<void> => {
+  // Update the sports center to remove the staff member
+  const sportsCenterRef = doc(db, 'sportsCenters', sportsCenterId);
+  const sportsCenterDoc = await getDoc(sportsCenterRef);
+  
+  if (sportsCenterDoc.exists()) {
+    const sportsCenterData = sportsCenterDoc.data();
+    const staffIds = sportsCenterData.staffIds || [];
+    
+    // Remove the user ID from the staffIds array
+    const updatedStaffIds = staffIds.filter((id: string) => id !== userId);
+    
+    await updateDoc(sportsCenterRef, {
+      staffIds: updatedStaffIds
+    });
+  }
+  
+  // Update the user's status to revoked
+  const userRef = doc(db, 'sportsCenterUsers', userId);
+  await updateDoc(userRef, {
+    status: 'revoked'
+  });
+};
+
+export const acceptStaffInvitation = async (token: string, userId: string): Promise<SportsCenterUser> => {
+  // Find the invitation with the given token
+  const invitationsRef = collection(db, 'staffInvitations');
+  const q = query(invitationsRef, where('token', '==', token));
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) {
+    throw new Error('Invalid invitation token');
+  }
+  
+  const invitationDoc = querySnapshot.docs[0];
+  const invitation = invitationDoc.data();
+  
+  // Check if the invitation is expired
+  const expiresAt = invitation.expiresAt.toDate();
+  if (expiresAt < new Date()) {
+    throw new Error('Invitation has expired');
+  }
+  
+  // Check if the invitation is still pending
+  if (invitation.status !== 'pending') {
+    throw new Error('Invitation has already been used or revoked');
+  }
+  
+  // Update the invitation status
+  await updateDoc(doc(db, 'staffInvitations', invitationDoc.id), {
+    status: 'accepted'
+  });
+  
+  // Create or update the sports center user
+  const userRef = doc(db, 'sportsCenterUsers', userId);
+  const userData = {
+    email: invitation.email,
+    displayName: auth.currentUser?.displayName || 'Staff Member',
+    photoURL: auth.currentUser?.photoURL,
+    role: 'staff' as const,
+    sportsCenterId: invitation.sportsCenterId,
+    invitedBy: invitation.invitedBy,
+    status: 'active' as const
+  };
+  
+  await setDoc(userRef, {
+    ...userData,
+    createdAt: serverTimestamp()
+  });
+  
+  // Add the user to the sports center's staff list
+  const sportsCenterRef = doc(db, 'sportsCenters', invitation.sportsCenterId);
+  const sportsCenterDoc = await getDoc(sportsCenterRef);
+  
+  if (sportsCenterDoc.exists()) {
+    const sportsCenterData = sportsCenterDoc.data();
+    const staffIds = sportsCenterData.staffIds || [];
+    
+    // Add the user ID to the staffIds array if not already present
+    if (!staffIds.includes(userId)) {
+      await updateDoc(sportsCenterRef, {
+        staffIds: [...staffIds, userId]
+      });
+    }
+  }
+  
+  return {
+    id: userId,
+    ...userData,
+    createdAt: new Date()
+  };
+};
+
+// Sports center discovery functions
+export const getSportsCenters = async (): Promise<SportsCenter[]> => {
+  const sportsCentersRef = collection(db, 'sportsCenters');
+  const querySnapshot = await getDocs(sportsCentersRef);
+  
+  const sportsCenters: SportsCenter[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    sportsCenters.push({
+      id: doc.id,
+      name: data.name,
+      description: data.description,
+      address: data.address,
+      city: data.city,
+      state: data.state,
+      zipCode: data.zipCode,
+      phone: data.phone,
+      email: data.email,
+      website: data.website,
+      photoURL: data.photoURL,
+      coverPhotoURL: data.coverPhotoURL,
+      location: data.location,
+      sports: data.sports,
+      amenities: data.amenities,
+      openingHours: data.openingHours,
+      createdAt: data.createdAt.toDate(),
+      updatedAt: data.updatedAt.toDate(),
+      ownerId: data.ownerId,
+      staffIds: data.staffIds || []
+    });
+  });
+  
+  return sportsCenters;
+};
+
+export const getSports = async (): Promise<Sport[]> => {
+  const sportsRef = collection(db, 'sports');
+  const querySnapshot = await getDocs(sportsRef);
+  
+  const sports: Sport[] = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    sports.push({
+      id: doc.id,
+      name: data.name,
+      icon: data.icon
+    });
+  });
+  
+  return sports;
 };
 
 // Export Firebase objects at the top level

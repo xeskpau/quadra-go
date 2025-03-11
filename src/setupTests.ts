@@ -6,6 +6,21 @@ import { jest } from '@jest/globals';
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 
+// Add TypeScript declarations for jest-dom matchers
+declare global {
+  namespace jest {
+    interface Matchers<R> {
+      toBeInTheDocument(): R;
+      toHaveTextContent(text: string | RegExp): R;
+      toBeVisible(): R;
+      toBeChecked(): R;
+      toHaveStyle(style: Record<string, any>): R;
+      toHaveClass(className: string): R;
+      toHaveAttribute(attr: string, value?: string): R;
+    }
+  }
+}
+
 // Mock the window.matchMedia function
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

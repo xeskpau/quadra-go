@@ -6,6 +6,9 @@ import { SportsCenterProvider } from './contexts/SportsCenterContext';
 import LoginModal from './components/auth/LoginModal';
 import UserProfile from './components/auth/UserProfile';
 import SportsCenterPortal from './components/sportsCenter/SportsCenterPortal';
+import WelcomePage from './components/WelcomePage';
+import SportsCenterDiscovery from './components/discovery/SportsCenterDiscovery';
+import StaffManager from './components/sportsCenter/StaffManager';
 import { useAuth } from './contexts/AuthContext';
 
 // Global styles
@@ -196,7 +199,40 @@ const NavLink = styled(Link)`
 // Main AppContent component that uses the authentication context
 const AppContent: React.FC = () => {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
-  const { currentUser } = useAuth();
+  const { currentUser, userRole } = useAuth();
+  
+  // Determine navigation links based on user role
+  const getNavLinks = () => {
+    if (!currentUser) {
+      return (
+        <>
+          <NavLink to="/" data-testid="home-link">Home</NavLink>
+          <NavLink to="/discover" data-testid="discover-link">Discover</NavLink>
+        </>
+      );
+    }
+    
+    if (userRole === 'sports_center_admin' || userRole === 'sports_center_staff') {
+      return (
+        <>
+          <NavLink to="/" data-testid="home-link">Home</NavLink>
+          <NavLink to="/sports-center" data-testid="sports-center-link">Dashboard</NavLink>
+          {userRole === 'sports_center_admin' && (
+            <NavLink to="/sports-center/staff" data-testid="staff-link">Staff</NavLink>
+          )}
+        </>
+      );
+    }
+    
+    // Regular user
+    return (
+      <>
+        <NavLink to="/" data-testid="home-link">Home</NavLink>
+        <NavLink to="/discover" data-testid="discover-link">Discover</NavLink>
+        <NavLink to="/bookings" data-testid="bookings-link">My Bookings</NavLink>
+      </>
+    );
+  };
   
   return (
     <>
@@ -204,8 +240,7 @@ const AppContent: React.FC = () => {
       <Header>
         <HeaderContent>
           <NavMenu>
-            <NavLink to="/" data-testid="home-link">Home</NavLink>
-            <NavLink to="/sports-center" data-testid="sports-center-link">Sports Center Portal</NavLink>
+            {getNavLinks()}
           </NavMenu>
           <HeaderCenter>
             <Logo>QuadraGo</Logo>
@@ -224,59 +259,25 @@ const AppContent: React.FC = () => {
       </Header>
       
       <Routes>
-        <Route path="/" element={
-          <MainContainer>
-            <HeroSection>
-              <HeroTitle>Find and Book Sports Facilities with Ease</HeroTitle>
-              <HeroDescription>
-                QuadraGo connects players with sports centers in their area.
-                Browse available facilities, check real-time availability, book online,
-                and find other players to join your game - all in one place.
-              </HeroDescription>
-              <CTAButton>Get Started</CTAButton>
-            </HeroSection>
-            
-            <FeaturesSection>
-              <FeatureCard>
-                <FeatureIcon>🔍</FeatureIcon>
-                <FeatureTitle>Find Nearby Facilities</FeatureTitle>
-                <FeatureDescription>
-                  Discover sports centers and facilities near your location with our intuitive map interface.
-                </FeatureDescription>
-              </FeatureCard>
-              
-              <FeatureCard>
-                <FeatureIcon>📅</FeatureIcon>
-                <FeatureTitle>Easy Booking</FeatureTitle>
-                <FeatureDescription>
-                  Book courts, fields, and other sports facilities with just a few clicks. Manage all your reservations in one place.
-                </FeatureDescription>
-              </FeatureCard>
-              
-              <FeatureCard>
-                <FeatureIcon>👥</FeatureIcon>
-                <FeatureTitle>Find Players</FeatureTitle>
-                <FeatureDescription>
-                  Connect with other sports enthusiasts in your area and never miss out on a game due to lack of players.
-                </FeatureDescription>
-              </FeatureCard>
-            </FeaturesSection>
-          </MainContainer>
-        } />
-        
+        <Route path="/" element={<WelcomePage />} />
+        <Route path="/discover" element={<SportsCenterDiscovery />} />
         <Route path="/sports-center" element={<SportsCenterPortal />} />
+        <Route path="/sports-center/staff" element={<StaffManager />} />
+        <Route path="/login" element={<LoginModal isOpen={true} onClose={() => {}} />} />
       </Routes>
       
       <Footer>
-        © {new Date().getFullYear()} QuadraGo. All rights reserved.
+        <p>&copy; {new Date().getFullYear()} QuadraGo. All rights reserved.</p>
       </Footer>
       
-      <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} />
+      {loginModalOpen && (
+        <LoginModal isOpen={loginModalOpen} onClose={() => setLoginModalOpen(false)} />
+      )}
     </>
   );
 };
 
-// Main App component that provides the authentication context
+// Main App component that provides context providers
 const App: React.FC = () => {
   return (
     <Router>

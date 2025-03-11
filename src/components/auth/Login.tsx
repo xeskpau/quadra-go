@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const LoginContainer = styled.div`
   background-color: white;
@@ -181,43 +181,48 @@ const ResetPasswordButton = styled.button`
   }
 `;
 
-const TestAccountsSection = styled.div`
+const TestAccountsContainer = styled.div`
   margin-top: 2rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background-color: #f8fafc;
 `;
 
 const TestAccountsTitle = styled.h3`
   font-size: 1rem;
   color: #4a5568;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
 `;
 
 const TestAccountsList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  font-size: 0.875rem;
 `;
 
-const TestAccount = styled.div`
-  display: flex;
-  justify-content: space-between;
-  padding: 0.5rem;
-  background-color: #f7fafc;
+const TestAccount = styled.button`
+  background-color: white;
+  border: 1px solid #e2e8f0;
   border-radius: 4px;
+  padding: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
   
   &:hover {
-    background-color: #edf2f7;
+    background-color: #f1f5f9;
   }
 `;
 
-const TestAccountButton = styled.button`
+const TextButton = styled.button`
   background: none;
   border: none;
-  color: #3182ce;
+  color: #0072ff;
+  font-size: 0.875rem;
   cursor: pointer;
-  font-size: 0.75rem;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
   
   &:hover {
     text-decoration: underline;
@@ -243,140 +248,191 @@ const useCustomNavigate = () => {
 };
 
 const Login: React.FC<LoginProps> = ({ onClose }) => {
+  const { login, signInWithGoogle, resetPassword, userRole } = useAuth();
+  const navigate = useCustomNavigate();
+  const location = useLocation();
+  
+  // Get the role from location state or default to 'user'
+  const role = (location.state as any)?.role || 'user';
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
-  const [resetSent, setResetSent] = useState(false);
-  const [googleSignInAttempted, setGoogleSignInAttempted] = useState(false);
-  
-  const { login, register, signInWithGoogle, resetPassword } = useAuth();
-  const navigate = useCustomNavigate();
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   
   const handleRedirectAfterLogin = () => {
-    setSuccess('Logged in successfully!');
-    
-    // Short delay to show success message before redirect
-    setTimeout(() => {
-      if (onClose) onClose();
-      navigate('/feed');
-    }, 1500); // Increased delay to make sure users see the success message
+    if (onClose) {
+      onClose();
+    } else {
+      // Redirect based on role
+      if (role === 'sports_center_admin' || role === 'sports_center_staff') {
+        navigate('/sports-center');
+      } else {
+        navigate('/discover');
+      }
+    }
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
+    
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
+    }
     
     try {
-      if (isLogin) {
-        await login(email, password);
-        handleRedirectAfterLogin();
-      } else {
-        await register(email, password);
-        setSuccess('Account created successfully!');
-        setIsLogin(true);
-      }
+      setLoading(true);
+      setError('');
+      
+      // Pass the role to the login function
+      await login(email, password, role as any);
+      
+      setSuccess('Login successful!');
+      handleRedirectAfterLogin();
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(err.message || 'Failed to log in');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
   
   const handleGoogleSignIn = async () => {
-    setError('');
-    setSuccess('');
-    setLoading(true);
-    setGoogleSignInAttempted(true);
-    
     try {
-      // Let the user know we're processing the Google sign-in
-      setSuccess('Connecting to Google...');
+      setLoading(true);
+      setError('');
       
-      const user = await signInWithGoogle();
-      if (user) {
-        handleRedirectAfterLogin();
-      } else {
-        setError('Google sign-in was cancelled or failed');
-        setGoogleSignInAttempted(false);
-      }
+      await signInWithGoogle();
+      
+      // Note: We can't set the role with Google sign-in directly
+      // This would need to be handled in the backend
+      
+      setSuccess('Login successful!');
+      handleRedirectAfterLogin();
     } catch (err: any) {
-      setError(err.message || 'An error occurred with Google Sign-in');
-      setGoogleSignInAttempted(false);
+      setError(err.message || 'Failed to log in with Google');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
   
   const handleForgotPassword = async () => {
-    if (!email) {
+    if (!forgotPasswordEmail) {
       setError('Please enter your email address');
       return;
     }
     
-    setError('');
-    setLoading(true);
-    
     try {
-      await resetPassword(email);
-      setResetSent(true);
-      setSuccess('Password reset email sent');
+      setLoading(true);
+      setError('');
+      
+      await resetPassword(forgotPasswordEmail);
+      
+      setSuccess('Password reset email sent! Check your inbox.');
+      setShowForgotPassword(false);
     } catch (err: any) {
-      setError(err.message || 'Could not send reset email');
+      setError(err.message || 'Failed to send reset email');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
   
-  // Add test accounts section for development and testing
+  // Render test accounts based on the selected role
   const renderTestAccounts = () => {
-    // Only show in development environment
-    if (process.env.NODE_ENV !== 'development' && process.env.NODE_ENV !== 'test') {
-      return null;
+    if (role === 'sports_center_admin') {
+      return (
+        <TestAccountsContainer>
+          <TestAccountsTitle>Test Sports Center Accounts</TestAccountsTitle>
+          <TestAccountsList>
+            <TestAccount onClick={() => handleUseTestAccount('admin@lasportscomplex.com', 'LAcomplex123')}>
+              Los Angeles Sports Complex
+            </TestAccount>
+            <TestAccount onClick={() => handleUseTestAccount('admin@sfsportshub.com', 'SFhub123')}>
+              San Francisco Sports Hub
+            </TestAccount>
+          </TestAccountsList>
+        </TestAccountsContainer>
+      );
     }
     
-    const testAccounts = [
-      { type: 'User', email: 'user@example.com', password: 'User123!' },
-      { type: 'Premium User', email: 'premium@example.com', password: 'Premium123!' },
-      { type: 'Sports Center', email: 'admin@lasportscomplex.com', password: 'LAcomplex123' }
-    ];
-    
-    const handleUseTestAccount = (email: string, password: string) => {
-      setEmail(email);
-      setPassword(password);
-    };
-    
+    // For regular users
     return (
-      <TestAccountsSection data-testid="test-accounts-section">
-        <TestAccountsTitle>Test Accounts (Development Only)</TestAccountsTitle>
+      <TestAccountsContainer>
+        <TestAccountsTitle>Test User Accounts</TestAccountsTitle>
         <TestAccountsList>
-          {testAccounts.map((account) => (
-            <TestAccount key={account.email}>
-              <div>
-                <strong>{account.type}:</strong> {account.email}
-              </div>
-              <TestAccountButton
-                type="button"
-                onClick={() => handleUseTestAccount(account.email, account.password)}
-                data-testid={`use-${account.type.toLowerCase().replace(/\s+/g, '-')}-account`}
-              >
-                Use this account
-              </TestAccountButton>
-            </TestAccount>
-          ))}
+          <TestAccount onClick={() => handleUseTestAccount('user@example.com', 'User123!')}>
+            Regular User
+          </TestAccount>
+          <TestAccount onClick={() => handleUseTestAccount('premium@example.com', 'Premium123!')}>
+            Premium User
+          </TestAccount>
         </TestAccountsList>
-      </TestAccountsSection>
+      </TestAccountsContainer>
     );
   };
   
+  const handleUseTestAccount = (testEmail: string, testPassword: string) => {
+    setEmail(testEmail);
+    setPassword(testPassword);
+  };
+  
+  // Get the title based on the role
+  const getTitle = () => {
+    switch (role) {
+      case 'sports_center_admin':
+        return 'Sports Center Admin Login';
+      case 'sports_center_staff':
+        return 'Sports Center Staff Login';
+      default:
+        return 'User Login';
+    }
+  };
+  
+  if (showForgotPassword) {
+    return (
+      <LoginContainer>
+        <Title>Reset Password</Title>
+        <Form onSubmit={(e) => { e.preventDefault(); handleForgotPassword(); }}>
+          <Input
+            type="email"
+            placeholder="Email"
+            value={forgotPasswordEmail}
+            onChange={(e) => setForgotPasswordEmail(e.target.value)}
+            required
+            data-testid="forgot-password-email"
+          />
+          
+          {error && <ErrorMessage>{error}</ErrorMessage>}
+          {success && <SuccessMessage>{success}</SuccessMessage>}
+          
+          <Button type="submit" disabled={loading} data-testid="reset-password-button">
+            {loading ? (
+              <>
+                <LoadingSpinner />
+                Sending...
+              </>
+            ) : (
+              'Send Reset Link'
+            )}
+          </Button>
+          
+          <TextButton onClick={() => setShowForgotPassword(false)} data-testid="back-to-login">
+            Back to Login
+          </TextButton>
+        </Form>
+      </LoginContainer>
+    );
+  }
+  
   return (
     <LoginContainer>
-      <Title>{isLogin ? 'Log In' : 'Create Account'}</Title>
-      
+      <Title>{getTitle()}</Title>
       <Form onSubmit={handleSubmit}>
         <Input
           type="email"
@@ -386,7 +442,6 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
           required
           data-testid="email-input"
         />
-        
         <Input
           type="password"
           placeholder="Password"
@@ -396,101 +451,38 @@ const Login: React.FC<LoginProps> = ({ onClose }) => {
           data-testid="password-input"
         />
         
-        {isLogin && (
-          <ForgotPassword 
-            type="button" 
-            onClick={handleForgotPassword}
-            data-testid="forgot-password-button"
-          >
-            Forgot Password?
-          </ForgotPassword>
-        )}
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        {success && <SuccessMessage>{success}</SuccessMessage>}
         
-        <Button 
-          type="submit" 
-          disabled={loading}
-          data-testid="submit-button"
-        >
-          {loading && !googleSignInAttempted ? (
-            <LoadingContainer>
+        <Button type="submit" disabled={loading} data-testid="login-submit">
+          {loading ? (
+            <>
               <LoadingSpinner />
-              Loading...
-            </LoadingContainer>
+              Logging in...
+            </>
           ) : (
-            isLogin ? 'Log In' : 'Create Account'
+            'Log In'
           )}
         </Button>
         
-        <Divider>
-          <DividerText>OR</DividerText>
-        </Divider>
+        {role === 'user' && (
+          <GoogleButton type="button" onClick={handleGoogleSignIn} disabled={loading} data-testid="google-login">
+            <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Sign in with Google
+          </GoogleButton>
+        )}
         
-        <GoogleButton 
-          type="button" 
-          onClick={handleGoogleSignIn}
-          disabled={loading}
-          data-testid="google-signin-button"
-        >
-          {loading && googleSignInAttempted ? (
-            <LoadingContainer>
-              <LoadingSpinner />
-              Connecting...
-            </LoadingContainer>
-          ) : (
-            <>
-              <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                <path fill="none" d="M0 0h48v48H0z"/>
-              </svg>
-              Continue with Google
-            </>
-          )}
-        </GoogleButton>
+        <TextButton onClick={() => setShowForgotPassword(true)} data-testid="forgot-password">
+          Forgot Password?
+        </TextButton>
       </Form>
       
-      <ToggleContainer>
-        <ToggleButton 
-          onClick={() => {
-            setIsLogin(!isLogin);
-            setError('');
-            setSuccess('');
-          }}
-          data-testid="toggle-mode-button"
-        >
-          {isLogin ? 'Need an account? Sign up' : 'Already have an account? Log in'}
-        </ToggleButton>
-      </ToggleContainer>
-      
-      {error && <ErrorMessage data-testid="error-message">{error}</ErrorMessage>}
-      
-      {resetSent && (
-        <ResetPasswordContainer>
-          <ResetPasswordButton 
-            onClick={() => setResetSent(false)}
-            data-testid="back-to-login-button"
-          >
-            Back to login
-          </ResetPasswordButton>
-        </ResetPasswordContainer>
-      )}
-      
-      {success && (
-        <div>
-          {loading ? (
-            <LoadingContainer>
-              <LoadingSpinner />
-              {success}
-            </LoadingContainer>
-          ) : (
-            <SuccessMessage data-testid="success-message">{success}</SuccessMessage>
-          )}
-        </div>
-      )}
-      
-      {renderTestAccounts()}
+      {process.env.NODE_ENV !== 'production' && renderTestAccounts()}
     </LoginContainer>
   );
 };

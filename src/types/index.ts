@@ -1,5 +1,15 @@
 // Define types for the application
 
+// User types
+export interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  role: 'user' | 'premium';
+  createdAt: Date;
+}
+
 // Sports Center types
 export interface SportsCenterUser {
   id: string;
@@ -8,6 +18,20 @@ export interface SportsCenterUser {
   photoURL?: string;
   role: 'admin' | 'staff';
   createdAt: Date;
+  sportsCenterId?: string; // For staff members, which center they belong to
+  invitedBy?: string; // ID of the admin who invited this staff member
+  status: 'active' | 'invited' | 'revoked';
+}
+
+export interface StaffInvitation {
+  id: string;
+  sportsCenterId: string;
+  email: string;
+  invitedBy: string; // Admin user ID
+  invitedAt: Date;
+  status: 'pending' | 'accepted' | 'declined' | 'revoked';
+  token: string; // Unique token for accepting invitation
+  expiresAt: Date;
 }
 
 export interface SportsCenter {
@@ -113,5 +137,23 @@ export interface AnalyticsData {
   };
   popularTimeSlots: {
     [key: string]: number;
+  };
+}
+
+// Filter types for sports center discovery
+export interface SportsCenterFilter {
+  sport?: string;
+  date?: Date;
+  startTime?: string;
+  endTime?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    radius: number; // in kilometers
+  };
+  amenities?: string[];
+  priceRange?: {
+    min: number;
+    max: number;
   };
 } 
