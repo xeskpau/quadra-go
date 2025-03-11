@@ -259,16 +259,36 @@ export const signInWithGoogle = async () => {
   return auth.currentUser;
 };
 
+// Define collection names for consistency
+const sportsCentersCollection = 'sportscenters';
+const sportsCenterUsersCollection = 'sportscenterusers';
+const facilitiesCollection = 'facilities';
+const timeSlotsCollection = 'timeslots';
+const bookingsCollection = 'bookings';
+const promotionsCollection = 'promotions';
+
 // Mock Firestore
-export const db = {
-  collection: (collectionName: string) => ({
+export const collection = (dbOrRef: any, collectionName: string) => {
+  // Ensure we're working with a valid db reference
+  if (!dbOrRef) {
+    throw new Error('Expected first argument to collection() to be a CollectionReference, a DocumentReference or FirebaseFirestore');
+  }
+  
+  return {
     doc: (id: string) => ({
       get: async () => ({
-        exists: true,
+        exists: () => {
+          if (collectionName === sportsCenterUsersCollection) {
+            return !!mockSportsCenterUsers[id];
+          } else if (collectionName === sportsCentersCollection) {
+            return !!mockSportsCenters.find(c => c.id === id);
+          }
+          return true;
+        },
         data: () => {
-          if (collectionName === 'sportscenterusers') {
+          if (collectionName === sportsCenterUsersCollection) {
             return mockSportsCenterUsers[id] || null;
-          } else if (collectionName === 'sportscenters') {
+          } else if (collectionName === sportsCentersCollection) {
             const center = mockSportsCenters.find(c => c.id === id);
             return center || null;
           }
@@ -315,22 +335,34 @@ export const db = {
         },
       }),
     }),
-  }),
-  // Add doc function to the db object
-  doc: (db: any, collectionName: string, id: string) => ({
+  };
+};
+
+// Mock Firestore db object
+export const db = {
+  collection: (collectionName: string) => collection(db, collectionName),
+  doc: (path: string) => ({
     get: async () => ({
       exists: () => {
-        if (collectionName === 'sportscenterusers') {
+        const parts = path.split('/');
+        const collectionName = parts[0];
+        const id = parts[1];
+        
+        if (collectionName === sportsCenterUsersCollection) {
           return !!mockSportsCenterUsers[id];
-        } else if (collectionName === 'sportscenters') {
+        } else if (collectionName === sportsCentersCollection) {
           return !!mockSportsCenters.find(c => c.id === id);
         }
         return true;
       },
       data: () => {
-        if (collectionName === 'sportscenterusers') {
+        const parts = path.split('/');
+        const collectionName = parts[0];
+        const id = parts[1];
+        
+        if (collectionName === sportsCenterUsersCollection) {
           return mockSportsCenterUsers[id] || null;
-        } else if (collectionName === 'sportscenters') {
+        } else if (collectionName === sportsCentersCollection) {
           const center = mockSportsCenters.find(c => c.id === id);
           return center || null;
         }
@@ -370,7 +402,15 @@ export const addDoc = async (collectionRef: any, data: any) => {
 
 // Mock Firebase functions
 export const getSportsCenterUser = async (userId: string) => {
-  return mockSportsCenterUsers[userId] || null;
+  // Use the doc function to get a reference to the user document
+  const userRef = doc(db, sportsCenterUsersCollection, userId);
+  const userSnap = await getDoc(userRef);
+  
+  if (userSnap.exists()) {
+    return userSnap.data();
+  }
+  
+  return null;
 };
 
 export const createSportsCenterUser = async (userId: string, userData: any) => {
@@ -384,6 +424,9 @@ export const createSportsCenterUser = async (userId: string, userData: any) => {
 };
 
 export const getSportsCentersByOwner = async (ownerId: string) => {
+  // Use the collection and query functions to get sports centers by owner
+  const sportsCentersRef = collection(db, sportsCentersCollection);
+  // Simulate the query by filtering the mock data
   return mockSportsCenters.filter(center => center.ownerId === ownerId);
 };
 
@@ -447,4 +490,51 @@ export const createPromotion = async (data: any) => {
 
 export const getPromotionsBySportsCenter = async (sportsCenterId: string) => {
   return [];
+};
+
+// Add doc function
+export const doc = (dbOrRef: any, collectionPath: string, docId?: string) => {
+  // Handle both 2-argument and 3-argument versions
+  let collection, id;
+  
+  if (docId) {
+    // 3-argument version: (db, collection, docId)
+    collection = collectionPath;
+    id = docId;
+  } else {
+    // 2-argument version: (db, path)
+    const parts = collectionPath.split('/');
+    collection = parts[0];
+    id = parts[1];
+  }
+  
+  return {
+    get: async () => ({
+      exists: () => {
+        if (collection === sportsCenterUsersCollection) {
+          return !!mockSportsCenterUsers[id];
+        } else if (collection === sportsCentersCollection) {
+          return !!mockSportsCenters.find(c => c.id === id);
+        }
+        return true;
+      },
+      data: () => {
+        if (collection === sportsCenterUsersCollection) {
+          return mockSportsCenterUsers[id] || null;
+        } else if (collection === sportsCentersCollection) {
+          const center = mockSportsCenters.find(c => c.id === id);
+          return center || null;
+        }
+        return {
+          id,
+          email: 'test@example.com',
+          displayName: 'Test User',
+          role: 'admin',
+          createdAt: new Date(),
+        };
+      },
+    }),
+    set: async (data: any) => {},
+    update: async (data: any) => {},
+  };
 }; 
