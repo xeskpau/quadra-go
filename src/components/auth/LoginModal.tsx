@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import Login from './Login';
 
@@ -19,7 +19,11 @@ const ModalOverlay = styled.div`
 const ModalContent = styled.div`
   position: relative;
   border-radius: 10px;
+  background-color: white;
   animation: fadeIn 0.3s ease-out;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
 
   @keyframes fadeIn {
     from {
@@ -43,9 +47,26 @@ const CloseButton = styled.button`
   cursor: pointer;
   color: #718096;
   z-index: 10;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
   
   &:hover {
     color: #2d3748;
+    background-color: #f7fafc;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.5);
   }
 `;
 
@@ -55,6 +76,8 @@ interface LoginModalProps {
 }
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
+  const modalContentRef = useRef<HTMLDivElement>(null);
+  
   // Lock body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
@@ -84,18 +107,25 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose }) => {
       window.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
+
+  // Handle click outside
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
   
   if (!isOpen) return null;
   
   return (
     <ModalOverlay 
-      onClick={onClose}
+      onClick={handleOverlayClick}
       data-testid="modal-overlay"
     >
-      <ModalContent onClick={(e) => e.stopPropagation()}>
+      <ModalContent ref={modalContentRef}>
         <CloseButton 
           onClick={onClose}
-          aria-label="Close"
+          aria-label="Close modal"
           data-testid="close-modal-button"
         >
           ✕
