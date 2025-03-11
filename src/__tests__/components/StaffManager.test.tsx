@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import StaffManager from '../../components/sportsCenter/StaffManager';
 import { useSportsCenter } from '../../contexts/SportsCenterContext';
@@ -7,6 +7,10 @@ import { SportsCenter, SportsCenterUser, StaffInvitation } from '../../types';
 
 // Mock the SportsCenterContext
 jest.mock('../../contexts/SportsCenterContext');
+
+// Mock window.confirm
+const originalConfirm = window.confirm;
+window.confirm = jest.fn();
 
 describe('StaffManager Component', () => {
   // Mock data
@@ -93,6 +97,13 @@ describe('StaffManager Component', () => {
       refreshStaffInvitations: mockRefreshStaffInvitations,
       error: null
     });
+
+    // Reset window.confirm mock
+    (window.confirm as jest.Mock).mockReset();
+  });
+
+  afterAll(() => {
+    window.confirm = originalConfirm;
   });
 
   test('renders staff management page for admin user', () => {
@@ -211,5 +222,131 @@ describe('StaffManager Component', () => {
     
     // Check if the empty state message is shown
     expect(screen.getByText('No pending invitations')).toBeInTheDocument();
+  });
+
+  test('handles cancelling invitation when confirmed', async () => {
+    // Mock confirm to return true
+    (window.confirm as jest.Mock).mockReturnValue(true);
+    
+    render(<StaffManager />);
+    
+    // Find the cancel button using data-testid
+    const cancelButton = screen.getByTestId('cancel-invitation-invitation1');
+    
+    // Click the cancel button
+    await act(async () => {
+      fireEvent.click(cancelButton);
+    });
+    
+    // Check if confirm was called
+    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to cancel this invitation?');
+    
+    // Check if the refresh function was called
+    await waitFor(() => {
+      expect(mockRefreshStaffInvitations).toHaveBeenCalled();
+    });
+  });
+
+  test('does not cancel invitation when not confirmed', async () => {
+    // Mock confirm to return false
+    (window.confirm as jest.Mock).mockReturnValue(false);
+    
+    render(<StaffManager />);
+    
+    // Find the cancel button using data-testid
+    const cancelButton = screen.getByTestId('cancel-invitation-invitation1');
+    
+    // Click the cancel button
+    await act(async () => {
+      fireEvent.click(cancelButton);
+    });
+    
+    // Check if confirm was called
+    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to cancel this invitation?');
+    
+    // Check that the refresh function was NOT called
+    expect(mockRefreshStaffInvitations).not.toHaveBeenCalled();
+  });
+
+  test('handles revoking staff access when confirmed', async () => {
+    // Mock active staff members
+    (useSportsCenter as jest.Mock).mockReturnValue({
+      currentSportsCenter: mockSportsCenter,
+      sportsCenterUser: mockAdminUser,
+      staffInvitations: mockInvitations,
+      inviteStaff: mockInviteStaff,
+      revokeStaff: mockRevokeStaff,
+      refreshStaffInvitations: mockRefreshStaffInvitations,
+      error: null
+    });
+
+    // Mock confirm to return true
+    (window.confirm as jest.Mock).mockReturnValue(true);
+    
+    // Mock successful revoke
+    mockRevokeStaff.mockResolvedValue(undefined);
+    
+    render(<StaffManager />);
+    
+    // Find the revoke button using data-testid
+    const revokeButton = screen.getByTestId('revoke-staff-staff1');
+    
+    // Click the revoke button
+    await act(async () => {
+      fireEvent.click(revokeButton);
+    });
+    
+    // Check if confirm was called
+    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to revoke access for this staff member?');
+    
+    // Check if the revoke function was called with the correct staff ID
+    expect(mockRevokeStaff).toHaveBeenCalledWith('staff1');
+  });
+
+  test('does not revoke staff access when not confirmed', async () => {
+    // Mock confirm to return false
+    (window.confirm as jest.Mock).mockReturnValue(false);
+    
+    render(<StaffManager />);
+    
+    // Find the revoke button using data-testid
+    const revokeButton = screen.getByTestId('revoke-staff-staff1');
+    
+    // Click the revoke button
+    await act(async () => {
+      fireEvent.click(revokeButton);
+    });
+    
+    // Check if confirm was called
+    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to revoke access for this staff member?');
+    
+    // Check that the revoke function was NOT called
+    expect(mockRevokeStaff).not.toHaveBeenCalled();
+  });
+
+  test('handles error when revoking staff access', async () => {
+    // Mock confirm to return true
+    (window.confirm as jest.Mock).mockReturnValue(true);
+    
+    // Mock error when revoking
+    mockRevokeStaff.mockRejectedValue(new Error('Failed to revoke staff access'));
+    
+    render(<StaffManager />);
+    
+    // Find the revoke button using data-testid
+    const revokeButton = screen.getByTestId('revoke-staff-staff1');
+    
+    // Click the revoke button
+    await act(async () => {
+      fireEvent.click(revokeButton);
+    });
+    
+    // Check if the revoke function was called
+    expect(mockRevokeStaff).toHaveBeenCalled();
+    
+    // Wait for the error message to appear
+    await waitFor(() => {
+      expect(screen.getByText('Failed to revoke staff access')).toBeInTheDocument();
+    });
   });
 }); 
