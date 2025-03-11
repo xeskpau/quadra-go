@@ -3,6 +3,44 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import App from '../App';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 
+// Mock react-leaflet
+jest.mock('react-leaflet', () => ({
+  MapContainer: jest.fn().mockImplementation(({ children }) => (
+    <div data-testid="map-container">{children}</div>
+  )),
+  TileLayer: jest.fn().mockImplementation(() => <div data-testid="tile-layer" />),
+  Marker: jest.fn().mockImplementation(({ children }) => (
+    <div data-testid="marker">{children}</div>
+  )),
+  Popup: jest.fn().mockImplementation(({ children }) => (
+    <div data-testid="popup">{children}</div>
+  )),
+  useMap: jest.fn().mockReturnValue({
+    setView: jest.fn(),
+    getZoom: jest.fn().mockReturnValue(12),
+  }),
+}));
+
+// Mock leaflet
+jest.mock('leaflet', () => ({
+  Icon: jest.fn().mockImplementation(() => ({})),
+  LatLngExpression: jest.fn(),
+}));
+
+// Mock the MapView component
+jest.mock('../components/discovery/MapView', () => {
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(({ sportsCenters, userLocation, calculateDistance }) => (
+      <div data-testid="map-view">
+        <div>Map View Mock</div>
+        <div>Centers: {sportsCenters.length}</div>
+        <div>User Location: {userLocation ? 'Yes' : 'No'}</div>
+      </div>
+    ))
+  };
+});
+
 // Mock the auth context
 jest.mock('../contexts/AuthContext', () => {
   const originalModule = jest.requireActual('../contexts/AuthContext');

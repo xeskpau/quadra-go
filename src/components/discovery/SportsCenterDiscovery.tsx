@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { SportsCenter, Sport, SportsCenterFilter } from '../../types/index';
 import { getSportsCenters, getSports } from '../../firebase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import MapView from './MapView';
 
 const Container = styled.div`
   max-width: 1200px;
@@ -116,6 +117,37 @@ const ButtonGroup = styled.div`
   justify-content: flex-end;
 `;
 
+const ViewToggleContainer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+`;
+
+const ViewToggleButton = styled.button<{ $active: boolean }>`
+  background-color: ${props => props.$active ? '#0072ff' : 'white'};
+  color: ${props => props.$active ? 'white' : '#4a5568'};
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:first-child {
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+  }
+  
+  &:last-child {
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+  }
+  
+  &:hover {
+    background-color: ${props => props.$active ? '#0058cc' : '#f7fafc'};
+  }
+`;
+
 const SportsCenterGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -206,6 +238,20 @@ const AmenitiesInfo = styled(InfoRow)`
   }
 `;
 
+const PriceInfo = styled(InfoRow)`
+  &::before {
+    content: '💰';
+  }
+  font-weight: 600;
+  color: #3182ce;
+`;
+
+const DistanceInfo = styled(InfoRow)`
+  &::before {
+    content: '📏';
+  }
+`;
+
 const Divider = styled.hr`
   border: 0;
   height: 1px;
@@ -251,108 +297,103 @@ const ViewButton = styled(Button)`
   }
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 3rem;
-  background-color: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-`;
-
-const EmptyStateTitle = styled.h3`
-  color: #4a5568;
-  margin-bottom: 1rem;
-`;
-
-const EmptyStateText = styled.p`
-  color: #718096;
-  margin-bottom: 1.5rem;
-`;
-
-const LoadingContainer = styled.div`
+const LoadingSpinner = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 3rem;
-`;
-
-const LoadingSpinner = styled.div`
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #0072ff;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
+  height: 200px;
+  
+  &::after {
+    content: '';
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e2e8f0;
+    border-top-color: #0072ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
   
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    to {
+      transform: rotate(360deg);
+    }
   }
 `;
 
-const LoadingText = styled.p`
-  margin-top: 1rem;
-  font-size: 1rem;
-  color: #666;
-`;
-
-const ErrorContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 2rem;
-  margin: 1rem 0;
-  background-color: #fff3f3;
+const ErrorMessage = styled.div`
+  background-color: #fff5f5;
+  color: #e53e3e;
+  padding: 1.5rem;
   border-radius: 8px;
-  border: 1px solid #ffcaca;
-`;
-
-const ErrorIcon = styled.div`
-  font-size: 2rem;
-  margin-bottom: 1rem;
-`;
-
-const ErrorText = styled.p`
-  font-size: 1rem;
-  color: #e53935;
+  margin-bottom: 2rem;
   text-align: center;
+  font-weight: 500;
+`;
+
+const EmptyState = styled.div`
+  background-color: #f7fafc;
+  padding: 3rem;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 2rem;
+  
+  h3 {
+    color: #4a5568;
+    margin-bottom: 1rem;
+  }
+  
+  p {
+    color: #718096;
+    margin-bottom: 1.5rem;
+  }
 `;
 
 const SportsCenterDiscovery: React.FC = () => {
-  const [sportsCenters, setSportsCenters] = useState<SportsCenter[]>([]);
-  const [filteredCenters, setFilteredCenters] = useState<SportsCenter[]>([]);
-  const [sports, setSports] = useState<Sport[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  
-  // Filter state
-  const [filters, setFilters] = useState<SportsCenterFilter>({});
-  
   const navigate = useNavigate();
+  const location = useLocation();
   
-  // Load sports centers and sports
+  const [sportsCenters, setSportsCenters] = useState<SportsCenter[]>([]);
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Parse URL search params for filters
+  const searchParams = new URLSearchParams(location.search);
+  
+  // Initialize filters from URL params
+  const initialFilters: SportsCenterFilter = {
+    sport: searchParams.get('sport') || undefined,
+    priceRange: {
+      min: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : 0,
+      max: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : 1000
+    },
+    location: searchParams.get('lat') && searchParams.get('lng') && searchParams.get('radius') ? {
+      latitude: Number(searchParams.get('lat')),
+      longitude: Number(searchParams.get('lng')),
+      radius: Number(searchParams.get('radius'))
+    } : undefined,
+    view: (searchParams.get('view') as 'map' | 'list' | undefined) || 'list'
+  };
+  
+  const [filters, setFilters] = useState<SportsCenterFilter>(initialFilters);
+  const [filteredCenters, setFilteredCenters] = useState<SportsCenter[]>([]);
+  
+  // Load data
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
-        console.log('Loading sports centers and sports...');
+        const [centersData, sportsData] = await Promise.all([
+          getSportsCenters(),
+          getSports()
+        ]);
         
-        // Load sports centers
-        console.log('Calling getSportsCenters()');
-        const centers = await getSportsCenters();
-        console.log('Sports centers loaded:', centers);
-        setSportsCenters(centers);
-        setFilteredCenters(centers);
-        
-        // Load sports
-        console.log('Calling getSports()');
-        const sportsData = await getSports();
-        console.log('Sports loaded:', sportsData);
+        setSportsCenters(centersData);
         setSports(sportsData);
+        setLoading(false);
       } catch (err) {
         console.error('Error loading data:', err);
-        setError('Failed to load sports centers');
-      } finally {
+        setError('Failed to load sports centers. Please try again later.');
         setLoading(false);
       }
     };
@@ -360,10 +401,11 @@ const SportsCenterDiscovery: React.FC = () => {
     loadData();
   }, []);
   
-  // Apply filters when they change
+  // Apply filters and update URL
   useEffect(() => {
-    if (sportsCenters.length === 0) return;
+    if (loading) return;
     
+    // Filter sports centers
     let filtered = [...sportsCenters];
     
     // Filter by sport
@@ -373,10 +415,18 @@ const SportsCenterDiscovery: React.FC = () => {
       );
     }
     
-    // Filter by location (if implemented)
+    // Filter by price range
+    if (filters.priceRange) {
+      // For now, we'll use a placeholder price of 20 for all centers
+      // In a real app, this would filter based on actual prices
+      const minPrice = 20;
+      if (minPrice < filters.priceRange.min) {
+        filtered = filtered.filter(() => false);
+      }
+    }
+    
+    // Filter by location/distance
     if (filters.location) {
-      // This would require a more complex implementation with geolocation
-      // For now, we'll just simulate it
       filtered = filtered.filter(center => {
         const distance = calculateDistance(
           filters.location!.latitude,
@@ -388,31 +438,38 @@ const SportsCenterDiscovery: React.FC = () => {
       });
     }
     
-    // Filter by price range
-    if (filters.priceRange) {
-      // This would require checking facility prices
-      // For now, we'll just simulate it with a random price
-      filtered = filtered.filter(center => {
-        const averagePrice = Math.floor(Math.random() * 100) + 20; // Random price between 20 and 120
-        return averagePrice >= filters.priceRange!.min && averagePrice <= filters.priceRange!.max;
-      });
-    }
-    
     setFilteredCenters(filtered);
-  }, [filters, sportsCenters]);
+    
+    // Update URL with filters
+    const params = new URLSearchParams();
+    
+    if (filters.sport) params.set('sport', filters.sport);
+    if (filters.priceRange) {
+      params.set('minPrice', filters.priceRange.min.toString());
+      params.set('maxPrice', filters.priceRange.max.toString());
+    }
+    if (filters.location) {
+      params.set('lat', filters.location.latitude.toString());
+      params.set('lng', filters.location.longitude.toString());
+      params.set('radius', filters.location.radius.toString());
+    }
+    if (filters.view) params.set('view', filters.view);
+    
+    // Update URL without reloading the page
+    navigate(`?${params.toString()}`, { replace: true });
+    
+  }, [filters, sportsCenters, loading, navigate]);
   
-  // Helper function to calculate distance between two points (Haversine formula)
+  // Calculate distance between two coordinates in kilometers
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371; // Radius of the earth in km
     const dLat = deg2rad(lat2 - lat1);
     const dLon = deg2rad(lon2 - lon1);
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2); 
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+              Math.sin(dLon/2) * Math.sin(dLon/2); 
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-    const distance = R * c; // Distance in km
-    return distance;
+    return R * c; // Distance in km
   };
   
   const deg2rad = (deg: number): number => {
@@ -427,68 +484,68 @@ const SportsCenterDiscovery: React.FC = () => {
   };
   
   const handleClearFilters = () => {
-    setFilters({});
-    setFilteredCenters(sportsCenters);
+    setFilters({
+      view: filters.view // Preserve the current view
+    });
   };
   
   const handleUseCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
           setFilters(prev => ({
             ...prev,
             location: {
-              latitude,
-              longitude,
-              radius: 10 // Default radius of 10km
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              radius: prev.location?.radius || 10 // Default 10km radius
             }
           }));
         },
         (error) => {
           console.error('Error getting location:', error);
-          setError('Failed to get your location');
+          alert('Unable to get your location. Please check your browser settings.');
         }
       );
     } else {
-      setError('Geolocation is not supported by your browser');
+      alert('Geolocation is not supported by your browser.');
     }
   };
   
-  // Render sports tags
+  const toggleView = (view: 'map' | 'list') => {
+    setFilters(prev => ({
+      ...prev,
+      view
+    }));
+  };
+  
   const renderSportsTags = (center: SportsCenter) => {
-    if (!center.sports || center.sports.length === 0) return null;
-    
-    return (
-      <SportsList>
-        {center.sports.slice(0, 3).map((sport, index) => {
-          // Handle case where sport might be a string or a Sport object
-          const sportId = typeof sport === 'string' ? sport : sport.id;
-          const sportName = typeof sport === 'string' 
-            ? sports.find(s => s.id === sport)?.name || sport
-            : sport.name;
-          
-          return (
-            <SportTag key={`${center.id}-sport-${index}`}>
-              {sportName}
-            </SportTag>
-          );
-        })}
-        {center.sports.length > 3 && (
-          <SportTag>+{center.sports.length - 3} more</SportTag>
-        )}
-      </SportsList>
-    );
+    return center.sports.slice(0, 3).map((sport, index) => {
+      const sportIcon = sports.find(s => s.id === sport.id)?.icon || '';
+      return (
+        <SportTag key={index} data-icon={sportIcon}>
+          {sport.name}
+        </SportTag>
+      );
+    });
   };
   
   if (loading) {
     return (
       <Container>
         <Title>Discover Sports Centers</Title>
-        <LoadingContainer data-testid="loading-spinner">
-          <LoadingSpinner />
-          <LoadingText>Loading sports centers...</LoadingText>
-        </LoadingContainer>
+        <LoadingSpinner data-testid="loading-spinner" />
+      </Container>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Container>
+        <Title>Discover Sports Centers</Title>
+        <ErrorMessage data-testid="error-message">
+          {error}
+        </ErrorMessage>
       </Container>
     );
   }
@@ -518,48 +575,52 @@ const SportsCenterDiscovery: React.FC = () => {
           </FilterGroup>
           
           <FilterGroup>
-            <FilterLabel htmlFor="price-min">Min Price</FilterLabel>
+            <FilterLabel htmlFor="price-min-filter">Min Price</FilterLabel>
             <Input 
-              id="price-min"
+              id="price-min-filter"
               data-testid="price-min-filter"
               type="number"
               min="0"
               value={filters.priceRange?.min || ''}
               onChange={(e) => handleFilterChange('priceRange', {
                 ...filters.priceRange,
-                min: parseInt(e.target.value) || 0
+                min: Number(e.target.value)
               })}
             />
           </FilterGroup>
           
           <FilterGroup>
-            <FilterLabel htmlFor="price-max">Max Price</FilterLabel>
+            <FilterLabel htmlFor="price-max-filter">Max Price</FilterLabel>
             <Input 
-              id="price-max"
+              id="price-max-filter"
               data-testid="price-max-filter"
               type="number"
               min="0"
               value={filters.priceRange?.max || ''}
               onChange={(e) => handleFilterChange('priceRange', {
                 ...filters.priceRange,
-                max: parseInt(e.target.value) || 1000
+                max: Number(e.target.value)
               })}
             />
           </FilterGroup>
           
           <FilterGroup>
-            <FilterLabel htmlFor="location-radius">Distance (km)</FilterLabel>
+            <FilterLabel htmlFor="distance-filter">Distance (km)</FilterLabel>
             <Input 
-              id="location-radius"
+              id="distance-filter"
               data-testid="distance-filter"
               type="number"
               min="1"
               max="100"
               value={filters.location?.radius || ''}
-              onChange={(e) => handleFilterChange('location', {
-                ...filters.location,
-                radius: parseInt(e.target.value) || 10
-              })}
+              onChange={(e) => {
+                if (filters.location) {
+                  handleFilterChange('location', {
+                    ...filters.location,
+                    radius: Number(e.target.value)
+                  });
+                }
+              }}
               disabled={!filters.location}
             />
           </FilterGroup>
@@ -581,65 +642,92 @@ const SportsCenterDiscovery: React.FC = () => {
         </ButtonGroup>
       </FiltersContainer>
       
-      {error && (
-        <ErrorContainer data-testid="error-message">
-          <ErrorIcon>⚠️</ErrorIcon>
-          <ErrorText>{error}</ErrorText>
-        </ErrorContainer>
-      )}
+      <ViewToggleContainer>
+        <ViewToggleButton 
+          $active={filters.view === 'list'} 
+          onClick={() => toggleView('list')}
+          data-testid="list-view-button"
+        >
+          List View
+        </ViewToggleButton>
+        <ViewToggleButton 
+          $active={filters.view === 'map'} 
+          onClick={() => toggleView('map')}
+          data-testid="map-view-button"
+        >
+          Map View
+        </ViewToggleButton>
+      </ViewToggleContainer>
       
-      {filteredCenters.length > 0 ? (
-        <SportsCenterGrid>
-          {filteredCenters.map((center) => (
-            <SportsCenterCard 
-              key={center.id} 
-              data-testid={`sports-center-${center.id}`}
-            >
-              <SportsCenterImage $imageUrl={center.photoURL} />
-              <SportsCenterContent>
-                <SportsCenterName>{center.name}</SportsCenterName>
-                <SportsCenterAddress>
-                  {center.address}, {center.city}, {center.state} {center.zipCode}
-                </SportsCenterAddress>
-                
-                {center.openingHours && center.openingHours.monday && (
-                  <OpeningHoursInfo>
-                    {'open' in center.openingHours.monday ? 
-                      `Open today: ${center.openingHours.monday.open} - ${center.openingHours.monday.close}` : 
-                      'Closed today'}
-                  </OpeningHoursInfo>
-                )}
-                
-                {center.amenities && center.amenities.length > 0 && (
-                  <AmenitiesInfo>
-                    {center.amenities.slice(0, 3).join(', ')}
-                    {center.amenities.length > 3 && ` +${center.amenities.length - 3} more`}
-                  </AmenitiesInfo>
-                )}
-                
-                <Divider />
-                
-                {renderSportsTags(center)}
-                <ViewButton 
-                  data-testid={`view-center-${center.id}`}
-                  onClick={() => navigate(`/sports-center/${center.id}`)}
-                >
-                  View Details
-                </ViewButton>
-              </SportsCenterContent>
-            </SportsCenterCard>
-          ))}
-        </SportsCenterGrid>
-      ) : (
+      {filteredCenters.length === 0 ? (
         <EmptyState data-testid="empty-state">
-          <EmptyStateTitle>No Sports Centers Found</EmptyStateTitle>
-          <EmptyStateText>
-            Try adjusting your filters or search for a different location.
-          </EmptyStateText>
-          <Button onClick={handleClearFilters}>
-            Clear All Filters
-          </Button>
+          <h3>No Sports Centers Found</h3>
+          <p>Try adjusting your filters or clearing them to see more results.</p>
+          <Button onClick={handleClearFilters}>Clear All Filters</Button>
         </EmptyState>
+      ) : (
+        <>
+          {filters.view === 'map' ? (
+            <MapView 
+              sportsCenters={filteredCenters} 
+              userLocation={filters.location}
+              calculateDistance={calculateDistance}
+            />
+          ) : (
+            <SportsCenterGrid>
+              {filteredCenters.map((center) => {
+                // Calculate distance if user location is available
+                let distance = null;
+                if (filters.location) {
+                  distance = calculateDistance(
+                    filters.location.latitude,
+                    filters.location.longitude,
+                    center.location.latitude,
+                    center.location.longitude
+                  );
+                }
+                
+                return (
+                  <SportsCenterCard key={center.id}>
+                    <SportsCenterImage $imageUrl={center.photoURL} />
+                    <SportsCenterContent>
+                      <SportsCenterName>{center.name}</SportsCenterName>
+                      <SportsCenterAddress>{center.address}, {center.city}</SportsCenterAddress>
+                      
+                      <SportsList>
+                        {renderSportsTags(center)}
+                      </SportsList>
+                      
+                      <OpeningHoursInfo>
+                        Open today: 05:00 - 23:00
+                      </OpeningHoursInfo>
+                      
+                      <AmenitiesInfo>
+                        parking, showers, lockers +2 more
+                      </AmenitiesInfo>
+                      
+                      <PriceInfo>
+                        From $20/hr
+                      </PriceInfo>
+                      
+                      {distance !== null && (
+                        <DistanceInfo>
+                          {distance.toFixed(1)} km away
+                        </DistanceInfo>
+                      )}
+                      
+                      <Divider />
+                      
+                      <ViewButton onClick={() => navigate(`/sports-center/${center.id}`)}>
+                        View Details
+                      </ViewButton>
+                    </SportsCenterContent>
+                  </SportsCenterCard>
+                );
+              })}
+            </SportsCenterGrid>
+          )}
+        </>
       )}
     </Container>
   );

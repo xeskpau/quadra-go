@@ -156,4 +156,5 @@ export interface SportsCenterFilter {
     min: number;
     max: number;
   };
+  view?: 'map' | 'list'; // Added view preference
 } 
