@@ -31,6 +31,7 @@ jest.mock('firebase/firestore', () => ({
 jest.mock('../../firebase', () => ({
   getSportsCenters: jest.fn(),
   getSports: jest.fn(),
+  getTimeSlotsBySportsCenterAndDate: jest.fn(),
 }));
 
 // Import the actual functions to mock
@@ -126,12 +127,20 @@ describe('SportsCenterDiscovery Component', () => {
     },
   ];
 
+  // Mock time slots
+  const mockTimeSlots = [
+    { id: 'slot1', facilityId: 'facility1', sportsCenterId: 'center1', startTime: '10:00', endTime: '11:00', date: new Date(), isAvailable: true, price: 25 },
+    { id: 'slot2', facilityId: 'facility2', sportsCenterId: 'center2', startTime: '10:00', endTime: '11:00', date: new Date(), isAvailable: false, price: 30 },
+    { id: 'slot3', facilityId: 'facility3', sportsCenterId: 'center3', startTime: '10:00', endTime: '11:00', date: new Date(), isAvailable: true, price: 20 },
+  ];
+
   beforeEach(() => {
     jest.clearAllMocks();
     
     // Mock the API calls
     (firebase.getSportsCenters as jest.Mock).mockResolvedValue(mockSportsCenters);
     (firebase.getSports as jest.Mock).mockResolvedValue(mockSports);
+    (firebase.getTimeSlotsBySportsCenterAndDate as jest.Mock).mockResolvedValue(mockTimeSlots);
     
     // Reset geolocation mock
     mockGeolocation.getCurrentPosition.mockReset();
@@ -459,5 +468,249 @@ describe('SportsCenterDiscovery Component', () => {
       // but we can check that the component structure is updated
       expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled();
     });
+  });
+
+  // New tests for the added functionality
+  it('renders date filter', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Check if date filter is rendered
+    expect(screen.getByTestId('date-filter')).toBeInTheDocument();
+  });
+
+  it('renders time filter', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Check if time filter is rendered
+    expect(screen.getByTestId('time-filter')).toBeInTheDocument();
+  });
+
+  it('renders duration filter', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Check if duration filter is rendered
+    expect(screen.getByTestId('duration-filter')).toBeInTheDocument();
+  });
+
+  it('applies date filter', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Set date filter
+    const dateFilter = screen.getByTestId('date-filter');
+    fireEvent.change(dateFilter, { target: { value: '2025-01-01' } });
+    
+    // Check that the filter was applied
+    expect(dateFilter).toHaveValue('2025-01-01');
+  });
+
+  it('applies time filter', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Set date filter first (time filter is disabled without date)
+    const dateFilter = screen.getByTestId('date-filter');
+    fireEvent.change(dateFilter, { target: { value: '2025-01-01' } });
+    
+    // Set time filter
+    const timeFilter = screen.getByTestId('time-filter');
+    fireEvent.change(timeFilter, { target: { value: '10:00' } });
+    
+    // Check that the filter was applied
+    expect(timeFilter).toHaveValue('10:00');
+  });
+
+  it('applies duration filter', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Set date filter first
+    const dateFilter = screen.getByTestId('date-filter');
+    fireEvent.change(dateFilter, { target: { value: '2025-01-01' } });
+    
+    // Set time filter
+    const timeFilter = screen.getByTestId('time-filter');
+    fireEvent.change(timeFilter, { target: { value: '10:00' } });
+    
+    // Set duration filter
+    const durationFilter = screen.getByTestId('duration-filter');
+    fireEvent.change(durationFilter, { target: { value: '60' } });
+    
+    // Check that the filter was applied
+    expect(durationFilter).toHaveValue('60');
+  });
+
+  it('checks availability when date, time, and duration are set', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Set date filter
+    const dateFilter = screen.getByTestId('date-filter');
+    fireEvent.change(dateFilter, { target: { value: '2025-01-01' } });
+    
+    // Set time filter
+    const timeFilter = screen.getByTestId('time-filter');
+    fireEvent.change(timeFilter, { target: { value: '10:00' } });
+    
+    // Set duration filter
+    const durationFilter = screen.getByTestId('duration-filter');
+    fireEvent.change(durationFilter, { target: { value: '60' } });
+    
+    // Check that the availability check function was called
+    await waitFor(() => {
+      expect(firebase.getTimeSlotsBySportsCenterAndDate).toHaveBeenCalled();
+    });
+  });
+
+  it('renders amenity filters', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Check if amenity filters are rendered
+    expect(screen.getByTestId('amenity-parking')).toBeInTheDocument();
+    expect(screen.getByTestId('amenity-showers')).toBeInTheDocument();
+  });
+
+  it('applies amenity filter', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Check parking amenity
+    const parkingCheckbox = screen.getByTestId('amenity-parking');
+    fireEvent.click(parkingCheckbox);
+    
+    // Check that the filter was applied
+    expect(parkingCheckbox).toBeChecked();
+  });
+
+  it('renders "Show unavailable sports centers" checkbox', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Check if the checkbox is rendered
+    expect(screen.getByTestId('show-unavailable')).toBeInTheDocument();
+  });
+
+  it('toggles "Show unavailable sports centers" checkbox', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Check the checkbox
+    const showUnavailableCheckbox = screen.getByTestId('show-unavailable');
+    fireEvent.click(showUnavailableCheckbox);
+    
+    // Check that the filter was applied
+    expect(showUnavailableCheckbox).toBeChecked();
+  });
+
+  it('applies sort by filter', async () => {
+    render(
+      <BrowserRouter>
+        <SportsCenterDiscovery />
+      </BrowserRouter>
+    );
+    
+    // Wait for loading to finish
+    await waitFor(() => {
+      expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument();
+    });
+    
+    // Set sort by filter
+    const sortByFilter = screen.getByTestId('sort-by');
+    fireEvent.change(sortByFilter, { target: { value: 'price' } });
+    
+    // Check that the filter was applied
+    expect(sortByFilter).toHaveValue('price');
   });
 }); 

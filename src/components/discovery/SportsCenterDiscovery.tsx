@@ -913,19 +913,17 @@ const SportsCenterDiscovery: React.FC = () => {
           </CheckboxGroup>
         </FilterGroup>
         
-        {filters.date && filters.startTime && filters.duration && (
-          <FilterGroup>
-            <CheckboxLabel>
-              <Checkbox 
-                type="checkbox"
-                checked={filters.showUnavailable || false}
-                onChange={(e) => handleFilterChange('showUnavailable', e.target.checked)}
-                data-testid="show-unavailable"
-              />
-              Show unavailable sports centers
-            </CheckboxLabel>
-          </FilterGroup>
-        )}
+        <FilterGroup>
+          <CheckboxLabel>
+            <Checkbox 
+              type="checkbox"
+              checked={filters.showUnavailable || false}
+              onChange={(e) => handleFilterChange('showUnavailable', e.target.checked)}
+              data-testid="show-unavailable"
+            />
+            Show unavailable sports centers
+          </CheckboxLabel>
+        </FilterGroup>
         
         <ButtonGroup>
           <ClearButton 
